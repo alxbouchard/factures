@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
+import InvoicePreviewModal from './InvoicePreviewModal';
+import { Invoice, CompanyInfo } from '../types';
 
 interface VoiceFirstLandingProps {
     onStartConversation: () => void;
     onManualEntry: () => void;
+    currentUser: any;
+    companyInfo: CompanyInfo | null;
 }
 
 const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
     onStartConversation,
-    onManualEntry
+    onManualEntry,
+    currentUser,
+    companyInfo
 }) => {
     const [isRecording, setIsRecording] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', text: string }>>([]);
     const [isThinking, setIsThinking] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
     const recognitionRef = React.useRef<any>(null);
 
     // Setup speech recognition
@@ -88,12 +96,48 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                         // AI wants to create invoice
                         const call = response.functionCalls[0];
                         if (call.name === 'create_invoice') {
+                            // Create the actual invoice
+                            const invoiceData = call.args as {
+                                clientName: string;
+                                clientAddress?: string;
+                                clientEmail?: string;
+                                dueDate?: string;
+                                lineItems: Array<{ description: string; quantity: number; price: number }>;
+                            };
+                            const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
+
+                            const newInvoice: Invoice = {
+                                id: `inv_${Date.now()}`,
+                                invoiceNumber: nextInvoiceNumber,
+                                invoiceDate: new Date().toISOString().split('T')[0],
+                                dueDate: invoiceData.dueDate || '',
+                                clientInfo: {
+                                    name: invoiceData.clientName || 'N/A',
+                                    address: invoiceData.clientAddress || 'N/A',
+                                    email: invoiceData.clientEmail || 'N/A',
+                                },
+                                lineItems: invoiceData.lineItems.map((item: any, index: number) => ({
+                                    id: Date.now() + index,
+                                    description: item.description || 'Article',
+                                    quantity: item.quantity || 1,
+                                    price: item.price || 0,
+                                })),
+                            };
+
+                            // Save to Firestore
+                            if (currentUser) {
+                                const { saveInvoice } = await import('../services/firestore');
+                                await saveInvoice(currentUser.uid, newInvoice);
+                            }
+
+                            // Show the modal
+                            setCreatedInvoice(newInvoice);
+                            setShowModal(true);
+
                             setMessages(prev => [...prev, {
                                 role: 'assistant',
                                 text: "✅ Parfait! J'ai créé votre facture. Voulez-vous que je l'envoie par email maintenant?"
                             }]);
-                            // TODO: Actually create the invoice with call.args
-                            console.log('Invoice data:', call.args);
                         }
                     }
                 } catch (error) {
@@ -139,17 +183,17 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     <button
                         onClick={handleMicClick}
                         className={`
-              relative w-48 h-48 rounded-full 
+              relative w - 48 h - 48 rounded - full 
               ${isRecording
                                 ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-2xl shadow-red-500/70 animate-pulse'
                                 : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-2xl shadow-indigo-500/50'
                             }
-              transform transition-all duration-300
-              hover:scale-105
-              active:scale-95
-            `}
+              transform transition - all duration - 300
+hover: scale - 105
+active: scale - 95
+    `}
                     >
-                        <div className={`absolute inset-0 rounded-full blur-xl opacity-50 animate-pulse ${isRecording ? 'bg-red-400' : 'bg-indigo-400'}`}></div>
+                        <div className={`absolute inset - 0 rounded - full blur - xl opacity - 50 animate - pulse ${isRecording ? 'bg-red-400' : 'bg-indigo-400'} `}></div>
 
                         <div className="relative flex flex-col items-center justify-center h-full">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-24 h-24 text-white mb-2">
@@ -185,11 +229,11 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                         </div>
                     ) : (
                         messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
+                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
+                                <div className={`max - w - [80 %] p - 4 rounded - 2xl ${msg.role === 'user'
                                     ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
                                     : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-none'
-                                    }`}>
+                                    } `}>
                                     <p className="text-lg">{msg.text}</p>
                                 </div>
                             </div>
@@ -219,6 +263,29 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     </button>
                 </div>
             </div>
+
+            {/* Invoice Preview Modal */}
+            {showModal && createdInvoice && (
+                <InvoicePreviewModal
+                    invoice={createdInvoice}
+                    companyInfo={companyInfo}
+                    onClose={() => setShowModal(false)}
+                    onSendEmail={async () => {
+                        if (createdInvoice.clientInfo.email && createdInvoice.clientInfo.email !== 'N/A') {
+                            const { sendEmailViaMailto, generateInvoiceEmail } = await import('../services/emailService');
+                            const emailData = await generateInvoiceEmail(createdInvoice, companyInfo);
+                            await sendEmailViaMailto(emailData);
+                            setShowModal(false);
+                            setMessages(prev => [...prev, {
+                                role: 'assistant',
+                                text: "📧 Email ouvert! Vérifiez votre client email."
+                            }]);
+                        } else {
+                            alert("Pas d'email client disponible");
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };

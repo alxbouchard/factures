@@ -254,6 +254,8 @@ const MainApp: React.FC = () => {
       <VoiceFirstLanding
         onStartConversation={() => setInterfaceMode('conversation')}
         onManualEntry={() => setInterfaceMode('classic')}
+        currentUser={currentUser}
+        companyInfo={companyInfo}
       />
     );
   }
