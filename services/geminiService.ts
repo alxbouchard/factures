@@ -149,19 +149,44 @@ const createInvoiceTool: FunctionDeclaration = {
     },
 };
 
-let chat: Chat | null = null;
+let chatInstance: Chat | null = null;
 
 export const startChatAndSendMessage = async (userMessage: string) => {
     if (!ai) {
-        return { text: "Le service d'IA n'est pas disponible. Veuillez vérifier la configuration de votre clé API." };
+        throw new Error("L'API Gemini n'est pas configurée.");
     }
 
-    if (!chat) {
-        chat = ai.chats.create({
+    // Get current date info for context
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-CA', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    // Calculate current week (Monday to Friday)
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Get to Monday
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+
+    const weekStr = `${monday.toLocaleDateString('fr-CA')} au ${friday.toLocaleDateString('fr-CA')}`;
+
+    if (!chatInstance) {
+        chatInstance = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
                 tools: [{ functionDeclarations: [createInvoiceTool] }],
                 systemInstruction: `Vous êtes un assistant de facturation intelligent et amical pour une application québécoise.
+
+CONTEXTE TEMPOREL IMPORTANT:
+- Date d'aujourd'hui: ${dateStr}
+- Semaine en cours (lundi à vendredi): ${weekStr}
+- Quand l'utilisateur dit "cette semaine", utilisez les dates: lundi ${monday.toLocaleDateString('fr-CA')} au vendredi ${friday.toLocaleDateString('fr-CA')}
 
 INFORMATION IMPORTANTE SUR LES TAXES:
 - L'application calcule AUTOMATIQUEMENT la TPS (5%) et la TVQ (9.975%) sur TOUTES les factures
@@ -181,6 +206,7 @@ Votre rôle:
 3. Quand vous avez assez d'informations, appelez la fonction create_invoice
 4. Soyez concis, amical et efficace
 5. Comprenez le français québécois (ex: "omerco" pas "Roberto")
+6. Comprenez les références temporelles: "cette semaine", "aujourd'hui", "la semaine passée", etc.
 
 RAPPEL: Les taxes TPS/TVQ sont AUTOMATIQUES - ne demandez jamais si l'utilisateur veut les ajouter, elles sont déjà là!`
             }
@@ -188,7 +214,7 @@ RAPPEL: Les taxes TPS/TVQ sont AUTOMATIQUES - ne demandez jamais si l'utilisateu
     }
 
     try {
-        const result = await chat.sendMessage({ message: userMessage });
+        const result = await chatInstance.sendMessage({ message: userMessage });
         const { functionCalls, text } = result;
 
         if (functionCalls && functionCalls.length > 0) {
