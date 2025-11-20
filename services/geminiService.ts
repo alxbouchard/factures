@@ -1,0 +1,183 @@
+
+import { GoogleGenAI, Type, FunctionDeclaration, Chat } from "@google/genai";
+import { CompanyInfo } from "../types";
+
+const API_KEY = process.env.API_KEY;
+
+if (!API_KEY) {
+  // This is a fallback for development and should not happen in the target environment.
+  // In a real app, you might want to show a more user-friendly error.
+  console.warn("La variable d'environnement API_KEY n'est pas définie. Les fonctionnalités Gemini ne fonctionneront pas.");
+}
+
+// We create the instance only if the key exists.
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+
+export const generateDescription = async (title: string): Promise<string> => {
+  if (!ai) {
+    return Promise.resolve(title); // Return original title if AI is not configured
+  }
+  const prompt = `Étant donné le titre de l'article "${title}", rédigez une description d'article professionnelle et concise pour une facture commerciale. Limitez-vous à une seule phrase. N'incluez pas le prix ou la quantité.`;
+
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    return response.text.trim();
+  } catch (error) {
+    console.error("Erreur lors de la génération de la description:", error);
+    // Fallback to the original title on error
+    return title;
+  }
+};
+
+export const generateEmailBody = async (invoiceDetails: string): Promise<string> => {
+    if (!ai) {
+        const clientName = invoiceDetails.split('Nom du client: ')[1]?.split(',')[0] || 'Client';
+        return Promise.resolve(`Bonjour ${clientName},\n\nVeuillez trouver votre facture en pièce jointe.\n\nMerci de faire affaire avec nous.`);
+    }
+    const prompt = `Rédigez un corps de courriel professionnel et amical pour envoyer une facture à un client. Utilisez les détails suivants en français: ${invoiceDetails}. Le courriel doit être bref et courtois. Adressez-vous au client par son nom. Mentionnez le montant total et la date d'échéance, et informez-le que la facture PDF est jointe à ce courriel.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        const clientName = invoiceDetails.split('Nom du client: ')[1]?.split(',')[0] || 'Client';
+        const invoiceNum = invoiceDetails.split('Numéro de facture: ')[1]?.split(',')[0] || '';
+        const total = invoiceDetails.split('Total: ')[1]?.split(' CAD')[0] || '';
+        console.error("Erreur lors de la génération du corps du courriel:", error);
+        return `Bonjour ${clientName},\n\nVeuillez trouver ci-joint la facture ${invoiceNum} d'un montant de ${total} CAD.\n\nCordialement,`;
+    }
+};
+
+export const generateSmsBody = async (invoiceDetails: string): Promise<string> => {
+    const invoiceNum = invoiceDetails.split('Numéro de facture: ')[1]?.split(',')[0] || '';
+    if (!ai) {
+        return Promise.resolve(`Bonjour. Votre facture ${invoiceNum} est prête. Le document PDF a été envoyé à votre adresse courriel. Merci.`);
+    }
+    const prompt = `Rédigez un SMS professionnel et très concis (moins de 160 caractères) pour informer un client de sa facture. Utilisez ces détails en français: ${invoiceDetails}. Mentionnez le montant total et la date d'échéance, et précisez que la facture PDF détaillée a été envoyée par courriel.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Erreur lors de la génération du corps du SMS:", error);
+        return `Bonjour. Votre facture ${invoiceNum} est prête. Le document PDF a été envoyé à votre adresse courriel. Merci.`;
+    }
+}
+
+export const analyzeInvoice = async (fileData: { mimeType: string; data: string }): Promise<Partial<CompanyInfo>> => {
+    if (!ai) {
+        throw new Error("L'IA n'est pas configurée. Veuillez vérifier votre clé API.");
+    }
+
+    const prompt = `Vous êtes un expert en extraction de données à partir de documents. Analysez ce document de facture. Identifiez les informations de l'entreprise qui a ÉMIS la facture (pas le client). Extrayez le nom de l'entreprise, son adresse complète, son numéro de téléphone et son adresse e-mail. Ignorez les informations du client, les articles de la facture, les totaux et les taxes. Si une information n'est pas trouvée, retournez une chaîne vide pour cette clé.`;
+
+    const imagePart = {
+        inlineData: {
+            mimeType: fileData.mimeType,
+            data: fileData.data,
+        },
+    };
+
+    const textPart = {
+        text: prompt,
+    };
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: { parts: [imagePart, textPart] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        name: { type: Type.STRING, description: "Nom de l'entreprise émettrice" },
+                        address: { type: Type.STRING, description: "Adresse complète de l'entreprise" },
+                        phone: { type: Type.STRING, description: "Numéro de téléphone de l'entreprise" },
+                        email: { type: Type.STRING, description: "Adresse e-mail de l'entreprise" },
+                    },
+                    required: ["name", "address", "phone", "email"],
+                },
+            },
+        });
+
+        const jsonString = response.text.trim();
+        const parsedData = JSON.parse(jsonString);
+        return parsedData as Partial<CompanyInfo>;
+
+    } catch (error) {
+        console.error("Erreur lors de l'analyse de la facture:", error);
+        throw new Error("Échec de l'analyse du document par l'IA.");
+    }
+};
+
+
+const createInvoiceTool: FunctionDeclaration = {
+    name: 'create_invoice',
+    description: 'Crée une nouvelle facture avec les informations du client et les articles.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            clientName: { type: Type.STRING, description: 'Le nom complet du client.' },
+            clientAddress: { type: Type.STRING, description: "L'adresse postale complète du client." },
+            clientEmail: { type: Type.STRING, description: "L'adresse courriel du client." },
+            dueDate: { type: Type.STRING, description: "La date d'échéance au format AAAA-MM-JJ. Optionnel." },
+            lineItems: {
+                type: Type.ARRAY,
+                description: 'Une liste des articles ou services facturés.',
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        description: { type: Type.STRING, description: "La description de l'article ou du service." },
+                        quantity: { type: Type.NUMBER, description: 'La quantité de cet article.' },
+                        price: { type: Type.NUMBER, description: 'Le prix unitaire de cet article.' },
+                    },
+                    required: ['description', 'quantity', 'price'],
+                },
+            },
+        },
+        required: ['clientName', 'lineItems'],
+    },
+};
+
+let chat: Chat | null = null;
+
+export const startChatAndSendMessage = async (userMessage: string) => {
+    if (!ai) {
+        return { text: "Le service d'IA n'est pas disponible. Veuillez vérifier la configuration de votre clé API." };
+    }
+
+    if (!chat) {
+        chat = ai.chats.create({
+            model: 'gemini-2.5-flash',
+            config: {
+              tools: [{ functionDeclarations: [createInvoiceTool] }],
+              systemInstruction: "Vous êtes un assistant de facturation. Votre objectif est d'aider l'utilisateur à créer une facture en extrayant les détails de sa demande. Vous ne devez utiliser l'outil `create_invoice` que lorsque vous avez suffisamment d'informations. Si des informations sont manquantes, posez des questions de clarification à l'utilisateur. Soyez concis et direct."
+            }
+        });
+    }
+
+    try {
+        const result = await chat.sendMessage({ message: userMessage });
+        const { functionCalls, text } = result;
+        
+        if (functionCalls && functionCalls.length > 0) {
+            return { functionCalls };
+        }
+        
+        return { text: text.trim() };
+        
+    } catch (error) {
+        console.error("Erreur lors de l'interaction avec le chat Gemini:", error);
+        return { text: "Désolé, une erreur s'est produite lors du traitement de votre demande." };
+    }
+};

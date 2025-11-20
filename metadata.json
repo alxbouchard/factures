@@ -1,0 +1,7 @@
+{
+  "name": "Factures",
+  "description": "Une application de facturation élégante, simple et alimentée par l'IA, conçue pour l'iPad Pro. Créez, prévisualisez et envoyez facilement des factures PDF professionnelles. Comprend la génération de contenu par Gemini pour les descriptions d'articles et les corps de courriels.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
