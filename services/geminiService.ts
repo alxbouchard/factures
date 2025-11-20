@@ -182,7 +182,7 @@ Votre rôle:
 4. Soyez concis, amical et efficace
 5. Comprenez le français québécois (ex: "omerco" pas "Roberto")
 
-RAPPEL: Les taxes TPS/TVQ sont AUTOMATIQUES - ne demandez jamais si l'utilisateur veut les ajouter, elles sont déjà là!`;
+RAPPEL: Les taxes TPS/TVQ sont AUTOMATIQUES - ne demandez jamais si l'utilisateur veut les ajouter, elles sont déjà là!`
             }
         });
     }
