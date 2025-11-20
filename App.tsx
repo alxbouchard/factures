@@ -83,25 +83,18 @@ const MainApp: React.FC = () => {
     return invoices.find(inv => inv.id === selectedInvoiceId);
   }, [invoices, selectedInvoiceId]);
 
-  // Load initial data from Firestore
+  // Load initial data from Firestore IN BACKGROUND (non-blocking)
   useEffect(() => {
     const loadData = async () => {
       if (!currentUser) return;
-      setIsLoadingData(true);
 
-      // Add timeout to prevent infinite loading
-      const loadTimeout = setTimeout(() => {
-        console.warn('Data loading timeout - proceeding anyway');
-        setIsLoadingData(false);
-        setIsSettingsOpen(true); // Open settings if can't load
-      }, 5000); // 5 second timeout
+      // Don't block UI - show interface immediately
+      setIsLoadingData(false);
 
       try {
         const savedCompanyInfo = await getCompanyInfo(currentUser.uid);
         if (savedCompanyInfo) {
           setCompanyInfo(savedCompanyInfo);
-        } else {
-          setIsSettingsOpen(true);
         }
 
         const savedInvoices = await getInvoices(currentUser.uid);
@@ -112,21 +105,13 @@ const MainApp: React.FC = () => {
           const newInvoice = createNewInvoice('001');
           setInvoices([newInvoice]);
           setSelectedInvoiceId(newInvoice.id);
-          // Save the initial invoice immediately so it exists
-          await saveInvoice(currentUser.uid, newInvoice);
         }
-
-        clearTimeout(loadTimeout);
       } catch (error) {
         console.error("Failed to load data from Firestore", error);
         // Create default data if loading fails
         const newInvoice = createNewInvoice('001');
         setInvoices([newInvoice]);
         setSelectedInvoiceId(newInvoice.id);
-        setIsSettingsOpen(true);
-        clearTimeout(loadTimeout);
-      } finally {
-        setIsLoadingData(false);
       }
     };
 
@@ -260,19 +245,8 @@ const MainApp: React.FC = () => {
     return <LoginModal />;
   }
 
-  if (isLoadingData) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">
-        <div className="flex flex-col items-center gap-4">
-          <svg className="animate-spin h-12 w-12 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p className="text-lg">Chargement de vos données...</p>
-        </div>
-      </div>
-    );
-  }
+  // SKIP loading screen - go straight to interface
+  // Load data in background while user sees the UI
 
   // NEW: Voice-First Landing Screen
   if (interfaceMode === 'landing') {
