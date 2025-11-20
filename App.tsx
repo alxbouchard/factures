@@ -7,6 +7,8 @@ import { SettingsIcon, SunIcon, MoonIcon } from './components/icons';
 import ActionToolbar from './components/ActionToolbar';
 import InvoiceList from './components/InvoiceList';
 import ChatWidget from './components/ChatWidget';
+import VoiceFirstLanding from './components/VoiceFirstLanding';
+import ConversationalChat from './components/ConversationalChat';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
 import { getCompanyInfo, getInvoices, saveCompanyInfo, saveInvoice, deleteInvoice } from './services/firestore';
@@ -62,6 +64,9 @@ const MainApp: React.FC = () => {
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [themeColor, setThemeColor] = useState<ThemeColor>('light');
+
+  // NEW: Interface mode state
+  const [interfaceMode, setInterfaceMode] = useState<'landing' | 'conversation' | 'classic'>('landing');
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -243,15 +248,38 @@ const MainApp: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-4">
-          <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg className="animate-spin h-12 w-12 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p>Chargement de vos données...</p>
+          <p className="text-lg">Chargement de vos données...</p>
         </div>
       </div>
     );
   }
+
+  // NEW: Voice-First Landing Screen
+  if (interfaceMode === 'landing') {
+    return (
+      <VoiceFirstLanding
+        onStartConversation={() => setInterfaceMode('conversation')}
+        onManualEntry={() => setInterfaceMode('classic')}
+      />
+    );
+  }
+
+  // NEW: Conversational Chat Interface
+  if (interfaceMode === 'conversation') {
+    return (
+      <ConversationalChat
+        onCreateInvoice={handleCreateInvoiceFromChat}
+        onExit={() => setInterfaceMode('classic')}
+        autoStartVoice={true}
+      />
+    );
+  }
+
+  // CLASSIC: Original Interface (with improvements)
 
   return (
     <div className="bg-slate-900 min-h-screen text-slate-200 flex flex-col lg:flex-row antialiased">
