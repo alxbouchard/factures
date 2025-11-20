@@ -33,17 +33,28 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
             };
 
             recognition.onend = () => {
-                setIsRecording(false);
+                // If user is still supposed to be recording, restart
+                // This handles the "no-speech" auto-stop issue
+                if (isRecording) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Recognition already started or error:', e);
+                    }
+                }
             };
 
             recognition.onerror = (event: any) => {
                 console.error('Speech recognition error:', event.error);
-                setIsRecording(false);
+                // Don't stop on no-speech error, just log it
+                if (event.error !== 'no-speech') {
+                    setIsRecording(false);
+                }
             };
 
             recognitionRef.current = recognition;
         }
-    }, []);
+    }, [isRecording]);
 
     const handleMicClick = async () => {
         if (!recognitionRef.current) {
@@ -54,7 +65,7 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
         if (isRecording) {
             // Stop recording and send message
             recognitionRef.current.stop();
-      setIs Recording(false);
+            setIsRecording(false);
 
             // Send the transcript to AI
             if (transcript.trim()) {
@@ -176,8 +187,8 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                         messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
-                                        ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
-                                        : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-none'
+                                    ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
+                                    : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-none'
                                     }`}>
                                     <p className="text-lg">{msg.text}</p>
                                 </div>
