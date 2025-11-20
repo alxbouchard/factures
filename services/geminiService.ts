@@ -2,34 +2,34 @@
 import { GoogleGenAI, Type, FunctionDeclaration, Chat } from "@google/genai";
 import { CompanyInfo } from "../types";
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-  // This is a fallback for development and should not happen in the target environment.
-  // In a real app, you might want to show a more user-friendly error.
-  console.warn("La variable d'environnement API_KEY n'est pas définie. Les fonctionnalités Gemini ne fonctionneront pas.");
+    // This is a fallback for development and should not happen in the target environment.
+    // In a real app, you might want to show a more user-friendly error.
+    console.warn("La variable d'environnement VITE_GEMINI_API_KEY n'est pas définie. Les fonctionnalités Gemini ne fonctionneront pas.");
 }
 
 // We create the instance only if the key exists.
 const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 export const generateDescription = async (title: string): Promise<string> => {
-  if (!ai) {
-    return Promise.resolve(title); // Return original title if AI is not configured
-  }
-  const prompt = `Étant donné le titre de l'article "${title}", rédigez une description d'article professionnelle et concise pour une facture commerciale. Limitez-vous à une seule phrase. N'incluez pas le prix ou la quantité.`;
+    if (!ai) {
+        return Promise.resolve(title); // Return original title if AI is not configured
+    }
+    const prompt = `Étant donné le titre de l'article "${title}", rédigez une description d'article professionnelle et concise pour une facture commerciale.Limitez - vous à une seule phrase.N'incluez pas le prix ou la quantité.`;
 
-  try {
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    });
-    return response.text.trim();
-  } catch (error) {
-    console.error("Erreur lors de la génération de la description:", error);
-    // Fallback to the original title on error
-    return title;
-  }
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Erreur lors de la génération de la description:", error);
+        // Fallback to the original title on error
+        return title;
+    }
 };
 
 export const generateEmailBody = async (invoiceDetails: string): Promise<string> => {
@@ -90,7 +90,7 @@ export const analyzeInvoice = async (fileData: { mimeType: string; data: string 
     const textPart = {
         text: prompt,
     };
-    
+
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
@@ -160,8 +160,8 @@ export const startChatAndSendMessage = async (userMessage: string) => {
         chat = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
-              tools: [{ functionDeclarations: [createInvoiceTool] }],
-              systemInstruction: "Vous êtes un assistant de facturation. Votre objectif est d'aider l'utilisateur à créer une facture en extrayant les détails de sa demande. Vous ne devez utiliser l'outil `create_invoice` que lorsque vous avez suffisamment d'informations. Si des informations sont manquantes, posez des questions de clarification à l'utilisateur. Soyez concis et direct."
+                tools: [{ functionDeclarations: [createInvoiceTool] }],
+                systemInstruction: "Vous êtes un assistant de facturation. Votre objectif est d'aider l'utilisateur à créer une facture en extrayant les détails de sa demande. Vous ne devez utiliser l'outil `create_invoice` que lorsque vous avez suffisamment d'informations. Si des informations sont manquantes, posez des questions de clarification à l'utilisateur. Soyez concis et direct."
             }
         });
     }
@@ -169,13 +169,13 @@ export const startChatAndSendMessage = async (userMessage: string) => {
     try {
         const result = await chat.sendMessage({ message: userMessage });
         const { functionCalls, text } = result;
-        
+
         if (functionCalls && functionCalls.length > 0) {
             return { functionCalls };
         }
-        
+
         return { text: text.trim() };
-        
+
     } catch (error) {
         console.error("Erreur lors de l'interaction avec le chat Gemini:", error);
         return { text: "Désolé, une erreur s'est produite lors du traitement de votre demande." };
