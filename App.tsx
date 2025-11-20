@@ -88,6 +88,14 @@ const MainApp: React.FC = () => {
     const loadData = async () => {
       if (!currentUser) return;
       setIsLoadingData(true);
+
+      // Add timeout to prevent infinite loading
+      const loadTimeout = setTimeout(() => {
+        console.warn('Data loading timeout - proceeding anyway');
+        setIsLoadingData(false);
+        setIsSettingsOpen(true); // Open settings if can't load
+      }, 5000); // 5 second timeout
+
       try {
         const savedCompanyInfo = await getCompanyInfo(currentUser.uid);
         if (savedCompanyInfo) {
@@ -107,8 +115,16 @@ const MainApp: React.FC = () => {
           // Save the initial invoice immediately so it exists
           await saveInvoice(currentUser.uid, newInvoice);
         }
+
+        clearTimeout(loadTimeout);
       } catch (error) {
         console.error("Failed to load data from Firestore", error);
+        // Create default data if loading fails
+        const newInvoice = createNewInvoice('001');
+        setInvoices([newInvoice]);
+        setSelectedInvoiceId(newInvoice.id);
+        setIsSettingsOpen(true);
+        clearTimeout(loadTimeout);
       } finally {
         setIsLoadingData(false);
       }
