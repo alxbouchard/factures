@@ -103,11 +103,11 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                 </div>
 
                 {/* Giant Voice Button - Always visible */}
-                <div className="mb-8">
+                <div className="mb-8 flex justify-center">
                     <button
                         onClick={handleMicClick}
                         className={`
-              relative w-48 h-48 mx-auto rounded-full 
+              relative w-48 h-48 rounded-full 
               ${isRecording
                                 ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-2xl shadow-red-500/70 animate-pulse'
                                 : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-2xl shadow-indigo-500/50'
