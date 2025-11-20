@@ -1,0 +1,212 @@
+/* iPad Pro Optimizations */
+
+/* Base Responsive Styles */
+* {
+  -webkit-tap-highlight-color: rgba(99, 102, 241, 0.2);
+  -webkit-touch-callout: none;
+}
+
+/* Smooth scrolling for iPad */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch Target Sizes (Apple HIG: minimum 44x44pt) */
+button, 
+a,
+input[type="button"],
+input[type="submit"],
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* iPad Pro 12.9" Portrait (1024x1366) */
+@media only screen 
+  and (min-device-width: 1024px) 
+  and (max-device-width: 1024px) 
+  and (orientation: portrait) 
+  and (-webkit-min-device-pixel-ratio: 2) {
+  
+  body {
+    font-size: 18px;
+  }
+  
+  /* Larger form inputs */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="date"],
+  textarea {
+    min-height: 52px;
+    font-size: 17px;
+    padding: 12px 16px;
+  }
+  
+  /* Optimized layout for portrait */
+  .invoice-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  
+  .invoice-list {
+    height: 30vh;
+    overflow-y: scroll;
+  }
+  
+  .invoice-workspace {
+    height: 70vh;
+    overflow-y: scroll;
+  }
+}
+
+/* iPad Pro 12.9" Landscape (1366x1024) */
+@media only screen 
+  and (min-device-width: 1024px) 
+  and (max-device-width: 1366px) 
+  and (orientation: landscape) 
+  and (-webkit-min-device-pixel-ratio: 2) {
+  
+  /* Side-by-side layout */
+  .invoice-container {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: 100vh;
+  }
+  
+  .invoice-list {
+    border-right: 1px solid rgb(51 65 85);
+  }
+  
+  .invoice-workspace {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding: 24px;
+  }
+  
+  /* Maximize preview space */
+  .invoice-preview {
+    position: sticky;
+    top: 24px;
+    height: calc(100vh - 48px);
+  }
+}
+
+/* iPad Pro 11" Portrait (834x1194) */
+@media only screen 
+  and (min-device-width: 834px) 
+  and (max-device-width: 834px) 
+  and (orientation: portrait) 
+  and (-webkit-min-device-pixel-ratio: 2) {
+  
+  body {
+    font-size: 17px;
+  }
+  
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on focus */
+  }
+}
+
+/* iPad Pro 11" Landscape (1194x834) */
+@media only screen 
+  and (min-device-width: 834px) 
+  and (max-device-width: 1194px) 
+  and (orientation: landscape) 
+  and (-webkit-min-device-pixel-ratio: 2) {
+  
+  .invoice-container {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+  }
+}
+
+/* Touch Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger spacing for touch */
+  .button-group button {
+    margin: 8px;
+  }
+  
+  /* Swipe indicators */
+  .swipeable {
+    position: relative;
+  }
+  
+  .swipeable::after {
+    content: '';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 24px;
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 2px;
+  }
+  
+  /* Prevent text selection on double-tap */
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* Keyboard Adjustments */
+@supports (-webkit-touch-callout: none) {
+  /* iOS-specific */
+  input:focus,
+  textarea:focus {
+    font-size: 16px; /* Prevents auto-zoom */
+  }
+  
+  /* Safe area support */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --primary: #6366f1;
+  }
+}
+
+/* Landscape Optimization */
+@media (orientation: landscape) and (max-height: 768px) {
+  /* Compact header in landscape */
+  header {
+    padding: 8px 16px;
+  }
+  
+  /* Scrollable content */
+  main {
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+}
+
+/* Print Optimization (for PDF generation) */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+  }
+  
+  .invoice-preview {
+    page-break-inside: avoid;
+  }
+}
