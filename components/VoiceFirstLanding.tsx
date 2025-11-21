@@ -48,11 +48,18 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
             console.log('💾 Invoice saved to Firestore');
         }
 
-        // Show the modal
+        // Show the modal - use setTimeout to ensure state updates after any re-renders
         console.log('🎭 Setting modal state - showModal: true, createdInvoice:', newInvoice);
-        setCreatedInvoice(newInvoice);
-        setShowModal(true);
-        console.log('✅ Modal state updated');
+
+        // Force state update in next tick
+        setTimeout(() => {
+            console.log('⏰ Executing setTimeout - setting states NOW');
+            setCreatedInvoice(newInvoice);
+            setShowModal(true);
+            console.log('✅ Modal state updated in setTimeout');
+        }, 0);
+
+        console.log('✅ Modal state update scheduled');
     }, [currentUser]);
 
     const {
