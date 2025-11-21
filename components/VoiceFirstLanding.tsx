@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import InvoicePreviewModal from './InvoicePreviewModal';
 import { Invoice, CompanyInfo } from '../types';
 import { useInvoiceChat } from '../hooks/useInvoiceChat';
@@ -19,7 +19,7 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
     const [showModal, setShowModal] = useState(false);
     const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
 
-    const handleInvoiceCreated = async (invoiceData: any) => {
+    const handleInvoiceCreated = useCallback(async (invoiceData: any) => {
         console.log('🎯 handleInvoiceCreated called with:', invoiceData);
         const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
 
@@ -55,7 +55,7 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
         setCreatedInvoice(newInvoice);
         setShowModal(true);
         console.log('✅ Modal state updated');
-    };
+    }, [currentUser]);
 
     const {
         messages,
@@ -167,21 +167,23 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     )}
                 </div>
 
-                {/* Alternative option */}
-                <div className="text-center flex flex-col gap-4">
-                    <button
-                        onClick={onStartConversation}
-                        className="text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium"
-                    >
-                        🤖 Passer en Mode Auto (Conversation)
-                    </button>
-                    <button
-                        onClick={onManualEntry}
-                        className="text-slate-400 hover:text-white transition-colors text-sm"
-                    >
-                        ✏️ Ou saisir manuellement
-                    </button>
-                </div>
+                {/* Alternative option - hide when modal is open */}
+                {!showModal && (
+                    <div className="text-center flex flex-col gap-4">
+                        <button
+                            onClick={onStartConversation}
+                            className="text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium"
+                        >
+                            🤖 Passer en Mode Auto (Conversation)
+                        </button>
+                        <button
+                            onClick={onManualEntry}
+                            className="text-slate-400 hover:text-white transition-colors text-sm"
+                        >
+                            ✏️ Ou saisir manuellement
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Invoice Preview Modal */}
