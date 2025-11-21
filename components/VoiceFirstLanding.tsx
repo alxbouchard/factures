@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InvoicePreviewModal from './InvoicePreviewModal';
 import { Invoice, CompanyInfo } from '../types';
 import { useInvoiceChat } from '../hooks/useInvoiceChat';
@@ -20,6 +20,7 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
     const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
 
     const handleInvoiceCreated = async (invoiceData: any) => {
+        console.log('🎯 handleInvoiceCreated called with:', invoiceData);
         const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
 
         const newInvoice: Invoice = {
@@ -40,15 +41,20 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
             })),
         };
 
+        console.log('📄 Created invoice object:', newInvoice);
+
         // Save to Firestore
         if (currentUser) {
             const { saveInvoice } = await import('../services/firestore');
             await saveInvoice(currentUser.uid, newInvoice);
+            console.log('💾 Invoice saved to Firestore');
         }
 
         // Show the modal
+        console.log('🎭 Setting modal state - showModal: true, createdInvoice:', newInvoice);
         setCreatedInvoice(newInvoice);
         setShowModal(true);
+        console.log('✅ Modal state updated');
     };
 
     const {
@@ -62,6 +68,11 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
         onCreateInvoice: () => { }, // We handle it in onInvoiceCreated
         onInvoiceCreated: handleInvoiceCreated
     });
+
+    // Debug: Monitor modal state changes
+    useEffect(() => {
+        console.log('🔍 Modal state changed - showModal:', showModal, 'createdInvoice:', createdInvoice);
+    }, [showModal, createdInvoice]);
 
     // Use the last user message as the "transcript" for display if needed, 
     // but better to show the conversation history or just the input value.
