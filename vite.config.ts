@@ -9,8 +9,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      port: 3000,
+      // Use a single port for both HTTP and HMR to avoid websocket errors
+      port: 5173,
+      strictPort: true,
       host: '0.0.0.0',
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+        port: 5173,
+      },
     },
     publicDir: 'public',
     plugins: [react()],

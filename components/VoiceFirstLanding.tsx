@@ -119,6 +119,35 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
 
                         <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping"></div>
                     </button>
+
+                    {/* TEST BUTTON */}
+                    <button
+                        onClick={() => {
+                            console.log('🧪 TEST BUTTON CLICKED');
+                            const testInvoice: Invoice = {
+                                id: 'test-123',
+                                invoiceNumber: '999',
+                                invoiceDate: new Date().toISOString().split('T')[0],
+                                dueDate: '',
+                                clientInfo: {
+                                    name: 'Test Client',
+                                    address: '123 Test St',
+                                    email: 'test@test.com'
+                                },
+                                lineItems: [{
+                                    id: 1,
+                                    description: 'Test Service',
+                                    quantity: 1,
+                                    price: 100
+                                }]
+                            };
+                            console.log('🧪 Calling onInvoiceCreated:', testInvoice);
+                            onInvoiceCreated(testInvoice);
+                        }}
+                        className="mt-4 px-8 py-4 bg-yellow-500 text-black font-bold rounded-xl hover:bg-yellow-400 transition-colors"
+                    >
+                        🧪 TEST MODAL
+                    </button>
                 </div>
 
                 {/* Live transcript */}
