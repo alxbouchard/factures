@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { CompanyInfo } from "../types";
 
-const API_KEY = "AIzaSyBlEhQXk6iITuvSWVmfEKSOCj2kgwZA3G4";
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
     console.warn("La variable d'environnement VITE_GEMINI_API_KEY n'est pas définie. Les fonctionnalités Gemini ne fonctionneront pas.");
