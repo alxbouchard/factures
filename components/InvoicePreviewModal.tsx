@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { Invoice, CompanyInfo } from '../types';
 
 interface InvoicePreviewModalProps {
@@ -23,9 +24,9 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
     const tvq = subtotal * 0.09975; // 9.975%
     const total = subtotal + tps + tvq;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="relative w-full max-w-3xl max-h-[90vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+            <div className="relative w-full max-w-3xl max-h-[90vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
@@ -147,6 +148,8 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             </div>
         </div>
     );
+
+    return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default InvoicePreviewModal;
