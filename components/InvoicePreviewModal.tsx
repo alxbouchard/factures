@@ -149,7 +149,9 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
         </div>
     );
 
-    return ReactDOM.createPortal(modalContent, document.body);
+    // Temporarily disable Portal for debugging
+    return modalContent;
+    // return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default InvoicePreviewModal;
