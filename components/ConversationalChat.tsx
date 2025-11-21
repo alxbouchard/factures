@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChatMessage } from '../types';
+import React, { useRef, useEffect } from 'react';
 import { SendIcon, MicrophoneIcon } from './icons';
-import { startChatAndSendMessage } from '../services/geminiService';
+import { useInvoiceChat } from '../hooks/useInvoiceChat';
 
 interface ConversationalChatProps {
     onCreateInvoice: (invoiceData: any) => void;
@@ -14,18 +13,38 @@ const ConversationalChat: React.FC<ConversationalChatProps> = ({
     onExit,
     autoStartVoice = false
 }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [inputValue, setInputValue] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [isRecording, setIsRecording] = useState(false);
-    const [showWaveform, setShowWaveform] = useState(false);
+    const {
+        messages,
+        setMessages,
+        inputValue,
+        setInputValue,
+        isLoading,
+        isRecording,
+        showWaveform,
+        handleMicClick,
+        handleSendMessage
+    } = useInvoiceChat({ onCreateInvoice });
 
-    const recognitionRef = useRef<any>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Auto-restart recording after model response
+    useEffect(() => {
+        if (autoStartVoice && messages.length > 0) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg.role === 'model') {
+                const timer = setTimeout(() => {
+                    if (!isRecording) {
+                        handleMicClick();
+                    }
+                }, 1500);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [messages, autoStartVoice, isRecording, handleMicClick]);
 
     // Initial welcome message
     useEffect(() => {
@@ -36,133 +55,17 @@ const ConversationalChat: React.FC<ConversationalChatProps> = ({
                 text: "👋 Bonjour! Je suis votre assistant de facturation magique.\n\nDites-moi simplement:\n• Pour qui est cette facture?\n• Quel service avez-vous rendu?\n• Combien voulez-vous charger?\n\nEt je m'occupe du reste! ✨"
             }]);
 
-            // Disabled auto-start to prevent race condition - user will click mic
-            // if (autoStartVoice) {
-            //   setTimeout(() => {
-            //     handleMicClick();
-            //   }, 1000);
-            // }
-        }
-    }, [messages]);
-
-    // Speech Recognition Setup
-    useEffect(() => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
-            recognition.lang = 'fr-CA';
-
-            recognition.onresult = (event: any) => {
-                const transcript = Array.from(event.results)
-                    .map((result: any) => result[0])
-                    .map((result) => result.transcript)
-                    .join('');
-                setInputValue(transcript);
-                setShowWaveform(true);
-            };
-
-            recognition.onend = () => {
-                setIsRecording(false);
-                setShowWaveform(false);
-                // Auto-send if we have content
-                if (inputValue.trim()) {
-                    handleSendMessage(new Event('submit') as any);
-                }
-            };
-
-            recognition.onerror = (event: any) => {
-                console.error('Speech recognition error:', event.error);
-                setIsRecording(false);
-                setShowWaveform(false);
-            };
-
-            recognitionRef.current = recognition;
-        }
-
-        return () => {
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
-                recognitionRef.current = null;
-            }
-        };
-    }, [inputValue]);
-
-    const handleMicClick = () => {
-        if (!recognitionRef.current) {
-            alert("La reconnaissance vocale n'est pas supportée par ce navigateur. Essayez Safari ou Chrome.");
-            return;
-        }
-
-        if (isRecording) {
-            try {
-                recognitionRef.current.stop();
-            } catch (e) {
-                console.error('Error stopping recognition:', e);
-            }
-            setIsRecording(false);
-            setShowWaveform(false);
-        } else {
-            try {
-                // Make sure it's not already running
-                if (recognitionRef.current) {
-                    recognitionRef.current.abort(); // Abort any ongoing recognition
-                }
-                recognitionRef.current.start();
-                setIsRecording(true);
-                setShowWaveform(true);
-            } catch (e) {
-                console.error('Error starting recognition:', e);
-                setIsRecording(false);
-                setShowWaveform(false);
+            if (autoStartVoice) {
+                // Small delay to ensure component is mounted and permissions are ready
+                setTimeout(() => {
+                    handleMicClick();
+                }, 500);
             }
         }
-    };
-
-    const handleSendMessage = async (event: React.FormEvent) => {
-        event.preventDefault();
-        if (isRecording) {
-            recognitionRef.current?.stop();
-            setIsRecording(false);
-        }
-        const userMessage = inputValue.trim();
-        if (!userMessage) return;
-
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', text: userMessage }]);
-        setInputValue('');
-        setIsLoading(true);
-
-        try {
-            const response = await startChatAndSendMessage(userMessage);
-
-            if (response.functionCalls) {
-                const call = response.functionCalls[0];
-                if (call.name === 'create_invoice') {
-                    onCreateInvoice(call.args);
-                    setMessages(prev => [...prev, {
-                        id: Date.now().toString(),
-                        role: 'model',
-                        text: "✅ Parfait! J'ai créé votre facture.\n\nVoulez-vous:\n• L'envoyer par email maintenant? 📧\n• La modifier? ✏️\n• Créer une autre facture? ➕"
-                    }]);
-                }
-            } else if (response.text) {
-                setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', text: response.text }]);
-            }
-        } catch (error) {
-            console.error(error);
-            setMessages(prev => [...prev, {
-                id: Date.now().toString(),
-                role: 'model',
-                text: "😅 Désolé, je n'ai pas bien compris. Pouvez-vous reformuler?"
-            }]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    }, [messages, setMessages, autoStartVoice]); // Removed handleMicClick from deps to avoid loop
 
     return (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+        <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col z-50">
             {/* Header */}
             <div className="bg-slate-900/50 backdrop-blur-lg border-b border-slate-700 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">

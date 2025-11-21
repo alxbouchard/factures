@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import InvoicePreviewModal from './InvoicePreviewModal';
 import { Invoice, CompanyInfo } from '../types';
+import { useInvoiceChat } from '../hooks/useInvoiceChat';
 
 interface VoiceFirstLandingProps {
     onStartConversation: () => void;
@@ -15,155 +16,57 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
     currentUser,
     companyInfo
 }) => {
-    const [isRecording, setIsRecording] = useState(false);
-    const [transcript, setTranscript] = useState('');
-    const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', text: string }>>([]);
-    const [isThinking, setIsThinking] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
-    const recognitionRef = React.useRef<any>(null);
 
-    // Setup speech recognition
-    React.useEffect(() => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'fr-CA';
+    const handleInvoiceCreated = async (invoiceData: any) => {
+        const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
 
-            recognition.onresult = (event: any) => {
-                const currentTranscript = Array.from(event.results)
-                    .map((result: any) => result[0])
-                    .map((result: any) => result.transcript)
-                    .join('');
-                setTranscript(currentTranscript);
-            };
+        const newInvoice: Invoice = {
+            id: `inv_${Date.now()}`,
+            invoiceNumber: nextInvoiceNumber,
+            invoiceDate: new Date().toISOString().split('T')[0],
+            dueDate: invoiceData.dueDate || '',
+            clientInfo: {
+                name: invoiceData.clientName || 'N/A',
+                address: invoiceData.clientAddress || 'N/A',
+                email: invoiceData.clientEmail || 'N/A',
+            },
+            lineItems: invoiceData.lineItems.map((item: any, index: number) => ({
+                id: Date.now() + index,
+                description: item.description || 'Article',
+                quantity: item.quantity || 1,
+                price: item.price || 0,
+            })),
+        };
 
-            recognition.onend = () => {
-                // If user is still supposed to be recording, restart
-                // This handles the "no-speech" auto-stop issue
-                if (isRecording) {
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        console.log('Recognition already started or error:', e);
-                    }
-                }
-            };
-
-            recognition.onerror = (event: any) => {
-                console.error('Speech recognition error:', event.error);
-                // Don't stop on no-speech error, just log it
-                if (event.error !== 'no-speech') {
-                    setIsRecording(false);
-                }
-            };
-
-            recognitionRef.current = recognition;
-        }
-    }, [isRecording]);
-
-    const handleMicClick = async () => {
-        if (!recognitionRef.current) {
-            alert("La reconnaissance vocale n'est pas supportée. Essayez Chrome ou Safari.");
-            return;
+        // Save to Firestore
+        if (currentUser) {
+            const { saveInvoice } = await import('../services/firestore');
+            await saveInvoice(currentUser.uid, newInvoice);
         }
 
-        if (isRecording) {
-            // Stop recording and send message
-            recognitionRef.current.stop();
-            setIsRecording(false);
-
-            // Send the transcript to AI
-            if (transcript.trim()) {
-                setMessages(prev => [...prev, { role: 'user', text: transcript }]);
-                const userMessage = transcript;
-                setTranscript('');
-                setIsThinking(true);
-
-                // Call real Gemini API
-                try {
-                    const { startChatAndSendMessage } = await import('../services/geminiService');
-                    const response = await startChatAndSendMessage(userMessage);
-
-                    if (response.text) {
-                        setMessages(prev => [...prev, {
-                            role: 'assistant',
-                            text: response.text
-                        }]);
-                    } else if (response.functionCalls) {
-                        // AI wants to create invoice
-                        const call = response.functionCalls[0];
-                        if (call.name === 'create_invoice') {
-                            // Create the actual invoice
-                            const invoiceData = call.args as {
-                                clientName: string;
-                                clientAddress?: string;
-                                clientEmail?: string;
-                                dueDate?: string;
-                                lineItems: Array<{ description: string; quantity: number; price: number }>;
-                            };
-                            const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
-
-                            const newInvoice: Invoice = {
-                                id: `inv_${Date.now()}`,
-                                invoiceNumber: nextInvoiceNumber,
-                                invoiceDate: new Date().toISOString().split('T')[0],
-                                dueDate: invoiceData.dueDate || '',
-                                clientInfo: {
-                                    name: invoiceData.clientName || 'N/A',
-                                    address: invoiceData.clientAddress || 'N/A',
-                                    email: invoiceData.clientEmail || 'N/A',
-                                },
-                                lineItems: invoiceData.lineItems.map((item: any, index: number) => ({
-                                    id: Date.now() + index,
-                                    description: item.description || 'Article',
-                                    quantity: item.quantity || 1,
-                                    price: item.price || 0,
-                                })),
-                            };
-
-                            // Save to Firestore
-                            if (currentUser) {
-                                const { saveInvoice } = await import('../services/firestore');
-                                await saveInvoice(currentUser.uid, newInvoice);
-                            }
-
-                            // Show the modal
-                            setCreatedInvoice(newInvoice);
-                            setShowModal(true);
-
-                            setMessages(prev => [...prev, {
-                                role: 'assistant',
-                                text: "✅ Parfait! J'ai créé votre facture. Voulez-vous que je l'envoie par email maintenant?"
-                            }]);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Gemini API error:', error);
-                    setMessages(prev => [...prev, {
-                        role: 'assistant',
-                        text: "😅 Désolé, j'ai eu un problème. Pouvez-vous répéter?"
-                    }]);
-                } finally {
-                    setIsThinking(false);
-                }
-            }
-        } else {
-            // Start recording
-            try {
-                if (recognitionRef.current) {
-                    recognitionRef.current.abort();
-                }
-                setTranscript('');
-                recognitionRef.current.start();
-                setIsRecording(true);
-            } catch (e) {
-                console.error('Error starting recognition:', e);
-            }
-        }
+        // Show the modal
+        setCreatedInvoice(newInvoice);
+        setShowModal(true);
     };
+
+    const {
+        messages,
+        inputValue,
+        isLoading: isThinking,
+        isRecording,
+        handleMicClick,
+        handleSendMessage
+    } = useInvoiceChat({
+        onCreateInvoice: () => { }, // We handle it in onInvoiceCreated
+        onInvoiceCreated: handleInvoiceCreated
+    });
+
+    // Use the last user message as the "transcript" for display if needed, 
+    // but better to show the conversation history or just the input value.
+    // The original design showed "transcript" in a box.
+    // We can use inputValue for that.
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center p-8">
@@ -183,17 +86,17 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     <button
                         onClick={handleMicClick}
                         className={`
-              relative w - 48 h - 48 rounded - full 
+              relative w-48 h-48 rounded-full 
               ${isRecording
                                 ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-2xl shadow-red-500/70 animate-pulse'
                                 : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-2xl shadow-indigo-500/50'
                             }
-              transform transition - all duration - 300
-hover: scale - 105
-active: scale - 95
+              transform transition-all duration-300
+              hover:scale-105
+              active:scale-95
     `}
                     >
-                        <div className={`absolute inset - 0 rounded - full blur - xl opacity - 50 animate - pulse ${isRecording ? 'bg-red-400' : 'bg-indigo-400'} `}></div>
+                        <div className={`absolute inset-0 rounded-full blur-xl opacity-50 animate-pulse ${isRecording ? 'bg-red-400' : 'bg-indigo-400'} `}></div>
 
                         <div className="relative flex flex-col items-center justify-center h-full">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-24 h-24 text-white mb-2">
@@ -213,9 +116,9 @@ active: scale - 95
                 </div>
 
                 {/* Live transcript */}
-                {transcript && (
+                {inputValue && (
                     <div className="mb-4 p-4 bg-indigo-500/20 rounded-xl border border-indigo-500/30 text-center">
-                        <p className="text-indigo-200 italic">"{transcript}"</p>
+                        <p className="text-indigo-200 italic">"{inputValue}"</p>
                     </div>
                 )}
 
@@ -230,7 +133,7 @@ active: scale - 95
                     ) : (
                         messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
-                                <div className={`max - w - [80 %] p - 4 rounded - 2xl ${msg.role === 'user'
+                                <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
                                     ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
                                     : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-none'
                                     } `}>
@@ -254,7 +157,13 @@ active: scale - 95
                 </div>
 
                 {/* Alternative option */}
-                <div className="text-center">
+                <div className="text-center flex flex-col gap-4">
+                    <button
+                        onClick={onStartConversation}
+                        className="text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium"
+                    >
+                        🤖 Passer en Mode Auto (Conversation)
+                    </button>
                     <button
                         onClick={onManualEntry}
                         className="text-slate-400 hover:text-white transition-colors text-sm"
@@ -276,10 +185,8 @@ active: scale - 95
                             const emailData = await generateInvoiceEmail(createdInvoice, companyInfo);
                             await sendEmailViaMailto(emailData);
                             setShowModal(false);
-                            setMessages(prev => [...prev, {
-                                role: 'assistant',
-                                text: "📧 Email ouvert! Vérifiez votre client email."
-                            }]);
+                            // We can't easily add message to hook state from here without exposing setMessages
+                            // But the hook adds a success message automatically.
                         } else {
                             alert("Pas d'email client disponible");
                         }

@@ -2,6 +2,7 @@ import React from 'react';
 import { ClientInfo, LineItem } from '../types';
 import LineItemRow from './LineItemRow';
 import { UserIcon, CalendarIcon, HashtagIcon } from './icons';
+import { useToast } from '../contexts/ToastContext';
 
 interface InvoiceFormProps {
   clientInfo: ClientInfo;
@@ -35,6 +36,7 @@ const InputField: React.FC<{ label: string; value: string; onChange: (e: React.C
 const InvoiceForm: React.FC<InvoiceFormProps> = ({
   clientInfo, setClientInfo, invoiceNumber, setInvoiceNumber, invoiceDate, setInvoiceDate, dueDate, setDueDate, lineItems, setLineItems
 }) => {
+  const { showToast } = useToast();
 
   const handleClientInfoChange = (field: keyof ClientInfo, value: string) => {
     setClientInfo(prev => ({ ...prev, [field]: value }));
@@ -43,7 +45,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleLineItemChange = (id: number, field: keyof Omit<LineItem, 'id'>, value: string | number) => {
     setLineItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
-  
+
   const handleDescriptionUpdate = (id: number, newDescription: string) => {
     setLineItems(prev => prev.map(item => item.id === id ? { ...item, description: newDescription } : item));
   };
@@ -60,7 +62,59 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     <div className="space-y-8">
       {/* Client Information */}
       <section>
-        <h2 className="text-lg font-semibold text-white mb-4">Facturer à</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-white">Facturer à</h2>
+          <div className="relative">
+            <input
+              type="file"
+              id="scan-client-input"
+              className="hidden"
+              accept="image/*"
+              onChange={async (e) => {
+                if (e.target.files && e.target.files[0]) {
+                  const file = e.target.files[0];
+                  showToast("Analyse du document en cours...", "info");
+                  try {
+                    // Show loading toast? We need access to toast here.
+                    // Since InvoiceForm is a child, we can use useToast if we import it.
+                    // But let's keep it simple for now or pass a prop?
+                    // Better to use useToast hook directly here.
+                    const { toBase64 } = await import('../utils/helpers');
+                    const { analyzeClientInfo } = await import('../services/geminiService');
+
+                    const base64 = await toBase64(file) as string;
+                    const fileData = {
+                      mimeType: file.type,
+                      data: base64.split(',')[1],
+                    };
+
+                    const info = await analyzeClientInfo(fileData);
+                    setClientInfo(prev => ({
+                      ...prev,
+                      name: info.name || prev.name,
+                      address: info.address || prev.address,
+                      email: info.email || prev.email,
+                    }));
+                    showToast("Infos client scannées avec succès !", "success");
+                  } catch (error) {
+                    console.error(error);
+                    showToast("Erreur lors du scan.", "error");
+                  }
+                }
+              }}
+            />
+            <button
+              onClick={() => document.getElementById('scan-client-input')?.click()}
+              className="text-xs bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/40 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+              </svg>
+              Scanner une carte
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField label="Nom du client" value={clientInfo.name} onChange={e => handleClientInfoChange('name', e.target.value)} icon={<UserIcon className="w-5 h-5" />} placeholder="ex: Acme Inc." />
           <InputField label="Courriel du client" value={clientInfo.email} onChange={e => handleClientInfoChange('email', e.target.value)} icon={<UserIcon className="w-5 h-5" />} placeholder="ex: contact@acme.com" type="email" />

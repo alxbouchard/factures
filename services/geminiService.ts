@@ -1,230 +1,201 @@
 
-import { GoogleGenAI, Type, FunctionDeclaration, Chat } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { CompanyInfo } from "../types";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-    // This is a fallback for development and should not happen in the target environment.
-    // In a real app, you might want to show a more user-friendly error.
     console.warn("La variable d'environnement VITE_GEMINI_API_KEY n'est pas définie. Les fonctionnalités Gemini ne fonctionneront pas.");
 }
 
-// We create the instance only if the key exists.
-const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export const generateDescription = async (title: string): Promise<string> => {
-    if (!ai) {
-        return Promise.resolve(title); // Return original title if AI is not configured
-    }
-    const prompt = `Étant donné le titre de l'article "${title}", rédigez une description d'article professionnelle et concise pour une facture commerciale.Limitez - vous à une seule phrase.N'incluez pas le prix ou la quantité.`;
+    if (!genAI) return title;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = "Étant donné le titre de l'article \"" + title + "\", rédigez une description d'article professionnelle et concise pour une facture commerciale. Limitez-vous à une seule phrase. N'incluez pas le prix ou la quantité.";
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-        return response.text.trim();
+        const result = await model.generateContent(prompt);
+        return result.response.text().trim();
     } catch (error) {
         console.error("Erreur lors de la génération de la description:", error);
-        // Fallback to the original title on error
         return title;
     }
 };
 
 export const generateEmailBody = async (invoiceDetails: string): Promise<string> => {
-    if (!ai) {
+    if (!genAI) {
         const clientName = invoiceDetails.split('Nom du client: ')[1]?.split(',')[0] || 'Client';
-        return Promise.resolve(`Bonjour ${clientName},\n\nVeuillez trouver votre facture en pièce jointe.\n\nMerci de faire affaire avec nous.`);
+        return "Bonjour " + clientName + ",\n\nVeuillez trouver votre facture en pièce jointe.\n\nMerci de faire affaire avec nous.";
     }
-    const prompt = `Rédigez un corps de courriel professionnel et amical pour envoyer une facture à un client. Utilisez les détails suivants en français: ${invoiceDetails}. Le courriel doit être bref et courtois. Adressez-vous au client par son nom. Mentionnez le montant total et la date d'échéance, et informez-le que la facture PDF est jointe à ce courriel.`;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = "Rédigez un corps de courriel professionnel et amical pour envoyer une facture à un client. Utilisez les détails suivants en français: " + invoiceDetails + ". Le courriel doit être bref et courtois. Adressez-vous au client par son nom. Mentionnez le montant total et la date d'échéance, et informez-le que la facture PDF est jointe à ce courriel.";
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-        return response.text.trim();
+        const result = await model.generateContent(prompt);
+        return result.response.text().trim();
     } catch (error) {
-        const clientName = invoiceDetails.split('Nom du client: ')[1]?.split(',')[0] || 'Client';
-        const invoiceNum = invoiceDetails.split('Numéro de facture: ')[1]?.split(',')[0] || '';
-        const total = invoiceDetails.split('Total: ')[1]?.split(' CAD')[0] || '';
         console.error("Erreur lors de la génération du corps du courriel:", error);
-        return `Bonjour ${clientName},\n\nVeuillez trouver ci-joint la facture ${invoiceNum} d'un montant de ${total} CAD.\n\nCordialement,`;
+        const clientName = invoiceDetails.split('Nom du client: ')[1]?.split(',')[0] || 'Client';
+        return "Bonjour " + clientName + ",\n\nVoici votre facture. Merci!";
     }
 };
 
 export const generateSmsBody = async (invoiceDetails: string): Promise<string> => {
     const invoiceNum = invoiceDetails.split('Numéro de facture: ')[1]?.split(',')[0] || '';
-    if (!ai) {
-        return Promise.resolve(`Bonjour. Votre facture ${invoiceNum} est prête. Le document PDF a été envoyé à votre adresse courriel. Merci.`);
+    if (!genAI) {
+        return "Bonjour. Votre facture " + invoiceNum + " est prête. Merci.";
     }
-    const prompt = `Rédigez un SMS professionnel et très concis (moins de 160 caractères) pour informer un client de sa facture. Utilisez ces détails en français: ${invoiceDetails}. Mentionnez le montant total et la date d'échéance, et précisez que la facture PDF détaillée a été envoyée par courriel.`;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = "Rédigez un SMS professionnel et très concis (moins de 160 caractères) pour informer un client de sa facture. Utilisez ces détails en français: " + invoiceDetails + ". Mentionnez le montant total et la date d'échéance.";
 
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-        return response.text.trim();
+        const result = await model.generateContent(prompt);
+        return result.response.text().trim();
     } catch (error) {
         console.error("Erreur lors de la génération du corps du SMS:", error);
-        return `Bonjour. Votre facture ${invoiceNum} est prête. Le document PDF a été envoyé à votre adresse courriel. Merci.`;
+        return "Bonjour. Votre facture " + invoiceNum + " est prête. Merci.";
     }
 }
 
 export const analyzeInvoice = async (fileData: { mimeType: string; data: string }): Promise<Partial<CompanyInfo>> => {
-    if (!ai) {
-        throw new Error("L'IA n'est pas configurée. Veuillez vérifier votre clé API.");
-    }
+    if (!genAI) throw new Error("L'IA n'est pas configurée.");
 
-    const prompt = `Vous êtes un expert en extraction de données à partir de documents. Analysez ce document de facture. Identifiez les informations de l'entreprise qui a ÉMIS la facture (pas le client). Extrayez le nom de l'entreprise, son adresse complète, son numéro de téléphone et son adresse e-mail. Ignorez les informations du client, les articles de la facture, les totaux et les taxes. Si une information n'est pas trouvée, retournez une chaîne vide pour cette clé.`;
-
-    const imagePart = {
-        inlineData: {
-            mimeType: fileData.mimeType,
-            data: fileData.data,
-        },
-    };
-
-    const textPart = {
-        text: prompt,
-    };
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { parts: [imagePart, textPart] },
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        name: { type: Type.STRING, description: "Nom de l'entreprise émettrice" },
-                        address: { type: Type.STRING, description: "Adresse complète de l'entreprise" },
-                        phone: { type: Type.STRING, description: "Numéro de téléphone de l'entreprise" },
-                        email: { type: Type.STRING, description: "Adresse e-mail de l'entreprise" },
-                    },
-                    required: ["name", "address", "phone", "email"],
+    const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: SchemaType.OBJECT,
+                properties: {
+                    name: { type: SchemaType.STRING },
+                    address: { type: SchemaType.STRING },
+                    phone: { type: SchemaType.STRING },
+                    email: { type: SchemaType.STRING },
                 },
-            },
-        });
-
-        const jsonString = response.text.trim();
-        const parsedData = JSON.parse(jsonString);
-        return parsedData as Partial<CompanyInfo>;
-
-    } catch (error) {
-        console.error("Erreur lors de l'analyse de la facture:", error);
-        throw new Error("Échec de l'analyse du document par l'IA.");
-    }
-};
-
-
-const createInvoiceTool: FunctionDeclaration = {
-    name: 'create_invoice',
-    description: 'Crée une nouvelle facture avec les informations du client et les articles.',
-    parameters: {
-        type: Type.OBJECT,
-        properties: {
-            clientName: { type: Type.STRING, description: 'Le nom complet du client.' },
-            clientAddress: { type: Type.STRING, description: "L'adresse postale complète du client." },
-            clientEmail: { type: Type.STRING, description: "L'adresse courriel du client." },
-            dueDate: { type: Type.STRING, description: "La date d'échéance au format AAAA-MM-JJ. Optionnel." },
-            lineItems: {
-                type: Type.ARRAY,
-                description: 'Une liste des articles ou services facturés.',
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        description: { type: Type.STRING, description: "La description de l'article ou du service." },
-                        quantity: { type: Type.NUMBER, description: 'La quantité de cet article.' },
-                        price: { type: Type.NUMBER, description: 'Le prix unitaire de cet article.' },
-                    },
-                    required: ['description', 'quantity', 'price'],
-                },
-            },
-        },
-        required: ['clientName', 'lineItems'],
-    },
-};
-
-let chatInstance: Chat | null = null;
-
-export const startChatAndSendMessage = async (userMessage: string) => {
-    if (!ai) {
-        throw new Error("L'API Gemini n'est pas configurée.");
-    }
-
-    // Get current date info for context
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('fr-CA', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+                required: ["name", "address", "phone", "email"],
+            }
+        }
     });
 
-    // Calculate current week (Monday to Friday)
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Get to Monday
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + mondayOffset);
+    const prompt = "Analysez ce document de facture. Identifiez les informations de l'entreprise émettrice.";
+    const imagePart = {
+        inlineData: {
+            data: fileData.data,
+            mimeType: fileData.mimeType,
+        },
+    };
 
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
+    try {
+        const result = await model.generateContent([prompt, imagePart]);
+        return JSON.parse(result.response.text()) as Partial<CompanyInfo>;
+    } catch (error) {
+        console.error("Erreur lors de l'analyse de la facture:", error);
+        throw new Error("Échec de l'analyse.");
+    }
+};
 
-    const weekStr = `${monday.toLocaleDateString('fr-CA')} au ${friday.toLocaleDateString('fr-CA')}`;
+export const analyzeClientInfo = async (fileData: { mimeType: string; data: string }): Promise<Partial<import("../types").ClientInfo>> => {
+    if (!genAI) throw new Error("L'IA n'est pas configurée.");
 
-    if (!chatInstance) {
-        chatInstance = ai.chats.create({
-            model: 'gemini-2.5-flash',
-            config: {
-                tools: [{ functionDeclarations: [createInvoiceTool] }],
-                systemInstruction: `Vous êtes un assistant de facturation intelligent et amical pour une application québécoise.
-
-CONTEXTE TEMPOREL IMPORTANT:
-- Date d'aujourd'hui: ${dateStr}
-- Semaine en cours (lundi à vendredi): ${weekStr}
-- Quand l'utilisateur dit "cette semaine", utilisez les dates: lundi ${monday.toLocaleDateString('fr-CA')} au vendredi ${friday.toLocaleDateString('fr-CA')}
-
-INFORMATION IMPORTANTE SUR LES TAXES:
-- L'application calcule AUTOMATIQUEMENT la TPS (5%) et la TVQ (9.975%) sur TOUTES les factures
-- Vous n'avez PAS besoin d'ajouter les taxes manuellement
-- Ne dites JAMAIS que vous ne pouvez pas ajouter les taxes
-- Les taxes sont TOUJOURS incluses dans le total final
-
-Votre rôle:
-1. Aidez l'utilisateur à créer des factures en conversant naturellement en français québécois
-2. Posez des questions pour obtenir les informations manquantes:
-   - Nom du client (obligatoire)
-   - Description du service/produit (obligatoire)
-   - Quantité et prix (obligatoire)
-   - Email du client (optionnel mais recommandé pour envoi)
-   - Adresse du client (optionnelle)
-   
-3. Quand vous avez assez d'informations, appelez la fonction create_invoice
-4. Soyez concis, amical et efficace
-5. Comprenez le français québécois (ex: "omerco" pas "Roberto")
-6. Comprenez les références temporelles: "cette semaine", "aujourd'hui", "la semaine passée", etc.
-
-RAPPEL: Les taxes TPS/TVQ sont AUTOMATIQUES - ne demandez jamais si l'utilisateur veut les ajouter, elles sont déjà là!`
+    const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: SchemaType.OBJECT,
+                properties: {
+                    name: { type: SchemaType.STRING },
+                    address: { type: SchemaType.STRING },
+                    email: { type: SchemaType.STRING },
+                },
+                required: ["name", "address", "email"],
             }
+        }
+    });
+
+    const prompt = "Analysez ce document. Identifiez les informations du CLIENT.";
+    const imagePart = {
+        inlineData: {
+            data: fileData.data,
+            mimeType: fileData.mimeType,
+        },
+    };
+
+    try {
+        const result = await model.generateContent([prompt, imagePart]);
+        return JSON.parse(result.response.text()) as Partial<import("../types").ClientInfo>;
+    } catch (error) {
+        console.error("Erreur lors de l'analyse client:", error);
+        throw new Error("Échec de l'analyse.");
+    }
+};
+
+// Chat with Tools
+let chatSession: any = null;
+
+const createInvoiceTool = {
+    functionDeclarations: [{
+        name: 'create_invoice',
+        description: 'Crée une nouvelle facture.',
+        parameters: {
+            type: SchemaType.OBJECT,
+            properties: {
+                clientName: { type: SchemaType.STRING, description: 'Nom du client' },
+                clientAddress: { type: SchemaType.STRING, description: 'Adresse du client' },
+                clientEmail: { type: SchemaType.STRING, description: 'Email du client' },
+                dueDate: { type: SchemaType.STRING, description: 'Date échéance (AAAA-MM-JJ)' },
+                lineItems: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                        type: SchemaType.OBJECT,
+                        properties: {
+                            description: { type: SchemaType.STRING },
+                            quantity: { type: SchemaType.NUMBER },
+                            price: { type: SchemaType.NUMBER },
+                        },
+                        required: ['description', 'quantity', 'price']
+                    }
+                }
+            },
+            required: ['clientName', 'lineItems']
+        }
+    }]
+};
+
+export const startChatAndSendMessage = async (userMessage: string) => {
+    if (!genAI) throw new Error("L'API Gemini n'est pas configurée.");
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-CA');
+
+    if (!chatSession) {
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            tools: [createInvoiceTool],
+            systemInstruction: "Vous êtes un assistant de facturation.\nBUT: Créer une facture via 'create_invoice' dès que possible.\nRÈGLES:\n1. Si vous avez Client, Description, Prix -> APPELEZ create_invoice.\n2. Ne demandez pas confirmation.\n3. Taxes automatiques.\n4. Date: " + dateStr + "."
         });
+        chatSession = model.startChat();
     }
 
     try {
-        const result = await chatInstance.sendMessage({ message: userMessage });
-        const { functionCalls, text } = result;
+        const result = await chatSession.sendMessage(userMessage);
+        const response = result.response;
+        const calls = response.functionCalls();
 
-        if (functionCalls && functionCalls.length > 0) {
-            return { functionCalls };
+        if (calls && calls.length > 0) {
+            // Map to expected format
+            const mappedCalls = calls.map((call: any) => ({
+                name: call.name,
+                args: call.args
+            }));
+            return { functionCalls: mappedCalls };
         }
 
-        return { text: text.trim() };
-
+        return { text: response.text() };
     } catch (error) {
-        console.error("Erreur lors de l'interaction avec le chat Gemini:", error);
-        return { text: "Désolé, une erreur s'est produite lors du traitement de votre demande." };
+        console.error("Erreur chat:", error);
+        return { text: "Désolé, une erreur s'est produite." };
     }
 };

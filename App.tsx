@@ -11,6 +11,8 @@ import VoiceFirstLanding from './components/VoiceFirstLanding';
 import ConversationalChat from './components/ConversationalChat';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
+import { ToastProvider } from './contexts/ToastContext';
+import Layout from './components/Layout';
 import { getCompanyInfo, getInvoices, saveCompanyInfo, saveInvoice, deleteInvoice } from './services/firestore';
 
 const createNewInvoice = (invoiceNumber: string): Invoice => ({
@@ -82,6 +84,11 @@ const MainApp: React.FC = () => {
   const currentInvoice = React.useMemo(() => {
     return invoices.find(inv => inv.id === selectedInvoiceId);
   }, [invoices, selectedInvoiceId]);
+
+  // Force landing mode on initial load
+  useEffect(() => {
+    setInterfaceMode('landing');
+  }, []);
 
   // Load initial data from Firestore IN BACKGROUND (non-blocking)
   useEffect(() => {
@@ -336,6 +343,20 @@ const MainApp: React.FC = () => {
                     <SaveStatusIndicator status={saveStatus} />
                   </div>
                   <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-full">
+                    <button onClick={() => setInterfaceMode('landing')} className="p-1.5 rounded-full text-slate-400 hover:bg-indigo-500 hover:text-white transition-colors" aria-label="Mode Vocal" title="Retour au mode vocal">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 7.5v-1.5a6 6 0 0 0-6-6v-1.5a6 6 0 0 0-6 6v1.5m6 7.5v-1.5" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-9 0V12Z" />
+                      </svg>
+                    </button>
+                    <button
+                      id="btn-mode-auto"
+                      onClick={() => setInterfaceMode('landing')}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium hover:shadow-lg hover:scale-105 transition-all"
+                    >
+                      <span>🎤 Assistant Vocal</span>
+                    </button>
+                    <div className="w-px h-4 bg-slate-700 mx-1"></div>
                     <button onClick={() => setThemeColor('light')} className={`p-1.5 rounded-full transition-colors ${themeColor === 'light' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-700'}`} aria-label="Thème clair">
                       <SunIcon className="w-5 h-5" />
                     </button>
@@ -384,6 +405,21 @@ const MainApp: React.FC = () => {
               </div>
             </div>
           </main>
+
+          {/* Floating Voice Mode Button */}
+          <button
+            onClick={() => setInterfaceMode('landing')}
+            className="fixed bottom-6 left-6 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-full shadow-lg shadow-indigo-500/40 hover:scale-110 transition-transform duration-200 group"
+            title="Ouvrir l'Assistant Vocal"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 7.5v-1.5a6 6 0 0 0-6-6v-1.5a6 6 0 0 0-6 6v1.5m6 7.5v-1.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-9 0V12Z" />
+            </svg>
+            <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white px-3 py-1 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Mode Vocal
+            </span>
+          </button>
         </>
       ) : (
         <div className="flex-grow flex items-center justify-center">
@@ -397,7 +433,11 @@ const MainApp: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <MainApp />
+      <ToastProvider>
+        <Layout>
+          <MainApp />
+        </Layout>
+      </ToastProvider>
     </AuthProvider>
   );
 };
