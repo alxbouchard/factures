@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import InvoicePreviewModal from './InvoicePreviewModal';
+import React, { useCallback } from 'react';
 import { Invoice, CompanyInfo } from '../types';
 import { useInvoiceChat } from '../hooks/useInvoiceChat';
 
 interface VoiceFirstLandingProps {
     onManualEntry: () => void;
+    onInvoiceCreated: (invoice: Invoice) => void;
     currentUser: any;
     companyInfo: CompanyInfo | null;
 }
 
 const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
     onManualEntry,
+    onInvoiceCreated,
     currentUser,
     companyInfo
 }) => {
-    const [showModal, setShowModal] = useState(false);
-    const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
+    // Remove local modal state - now managed by App.tsx
 
     const handleInvoiceCreated = useCallback(async (invoiceData: any) => {
         console.log('🎯 handleInvoiceCreated called with:', invoiceData);
@@ -48,19 +48,10 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
             console.log('💾 Invoice saved to Firestore');
         }
 
-        // Show the modal - use setTimeout to ensure state updates after any re-renders
-        console.log('🎭 Setting modal state - showModal: true, createdInvoice:', newInvoice);
-
-        // Force state update in next tick
-        setTimeout(() => {
-            console.log('⏰ Executing setTimeout - setting states NOW');
-            setCreatedInvoice(newInvoice);
-            setShowModal(true);
-            console.log('✅ Modal state updated in setTimeout');
-        }, 0);
-
-        console.log('✅ Modal state update scheduled');
-    }, [currentUser]);
+        // Call parent callback to show modal
+        console.log('📤 Calling onInvoiceCreated callback');
+        onInvoiceCreated(newInvoice);
+    }, [currentUser, onInvoiceCreated]);
 
     const {
         messages,
@@ -73,11 +64,6 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
         onCreateInvoice: () => { }, // We handle it in onInvoiceCreated
         onInvoiceCreated: handleInvoiceCreated
     });
-
-    // Debug: Monitor modal state changes
-    useEffect(() => {
-        console.log('🔍 Modal state changed - showModal:', showModal, 'createdInvoice:', createdInvoice);
-    }, [showModal, createdInvoice]);
 
     // Use the last user message as the "transcript" for display if needed, 
     // but better to show the conversation history or just the input value.
@@ -172,39 +158,16 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     )}
                 </div>
 
-                {/* Manual entry option - hide when modal is open */}
-                {!showModal && (
-                    <div className="text-center">
-                        <button
-                            onClick={onManualEntry}
-                            className="text-slate-400 hover:text-white transition-colors text-sm"
-                        >
-                            ✏️ Ou saisir manuellement
-                        </button>
-                    </div>
-                )}
+                {/* Manual entry option - always visible now */}
+                <div className="text-center">
+                    <button
+                        onClick={onManualEntry}
+                        className="text-slate-400 hover:text-white transition-colors text-sm"
+                    >
+                        ✏️ Ou saisir manuellement
+                    </button>
+                </div>
             </div>
-
-            {/* Invoice Preview Modal */}
-            {showModal && createdInvoice && (
-                <InvoicePreviewModal
-                    invoice={createdInvoice}
-                    companyInfo={companyInfo}
-                    onClose={() => setShowModal(false)}
-                    onSendEmail={async () => {
-                        if (createdInvoice.clientInfo.email && createdInvoice.clientInfo.email !== 'N/A') {
-                            const { sendEmailViaMailto, generateInvoiceEmail } = await import('../services/emailService');
-                            const emailData = await generateInvoiceEmail(createdInvoice, companyInfo);
-                            await sendEmailViaMailto(emailData);
-                            setShowModal(false);
-                            // We can't easily add message to hook state from here without exposing setMessages
-                            // But the hook adds a success message automatically.
-                        } else {
-                            alert("Pas d'email client disponible");
-                        }
-                    }}
-                />
-            )}
         </div>
     );
 };

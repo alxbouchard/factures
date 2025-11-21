@@ -8,6 +8,7 @@ import ActionToolbar from './components/ActionToolbar';
 import InvoiceList from './components/InvoiceList';
 import ChatWidget from './components/ChatWidget';
 import VoiceFirstLanding from './components/VoiceFirstLanding';
+import InvoicePreviewModal from './components/InvoicePreviewModal';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
 import { ToastProvider } from './contexts/ToastContext';
@@ -68,6 +69,10 @@ const MainApp: React.FC = () => {
 
   // Interface mode: 'voice' (default, with big PARLER button) or 'classic' (manual form)
   const [interfaceMode, setInterfaceMode] = useState<'voice' | 'classic'>('voice');
+
+  // Modal state - lifted to App level to persist across re-renders
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -257,11 +262,37 @@ const MainApp: React.FC = () => {
   // Voice Mode: Big PARLER button, AI conversation, invoice creation
   if (interfaceMode === 'voice') {
     return (
-      <VoiceFirstLanding
-        onManualEntry={() => setInterfaceMode('classic')}
-        currentUser={currentUser}
-        companyInfo={companyInfo}
-      />
+      <>
+        <VoiceFirstLanding
+          onManualEntry={() => setInterfaceMode('classic')}
+          currentUser={currentUser}
+          companyInfo={companyInfo}
+          onInvoiceCreated={(invoice) => {
+            console.log('📨 App received invoice:', invoice);
+            setCreatedInvoice(invoice);
+            setShowInvoiceModal(true);
+          }}
+        />
+
+        {/* Modal rendered at App level - persists across re-renders */}
+        {showInvoiceModal && createdInvoice && (
+          <InvoicePreviewModal
+            invoice={createdInvoice}
+            companyInfo={companyInfo}
+            onClose={() => setShowInvoiceModal(false)}
+            onSendEmail={async () => {
+              if (createdInvoice.clientInfo.email && createdInvoice.clientInfo.email !== 'N/A') {
+                const { sendEmailViaMailto, generateInvoiceEmail } = await import('./services/emailService');
+                const emailData = await generateInvoiceEmail(createdInvoice, companyInfo);
+                await sendEmailViaMailto(emailData);
+                setShowInvoiceModal(false);
+              } else {
+                alert("Pas d'email client disponible");
+              }
+            }}
+          />
+        )}
+      </>
     );
   }
 
