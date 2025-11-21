@@ -41,11 +41,15 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
 
         console.log('📄 Created invoice object:', newInvoice);
 
-        // Save to Firestore
+        // Save to Firestore (non-blocking - don't let errors prevent modal)
         if (currentUser) {
-            const { saveInvoice } = await import('../services/firestore');
-            await saveInvoice(currentUser.uid, newInvoice);
-            console.log('💾 Invoice saved to Firestore');
+            try {
+                const { saveInvoice } = await import('../services/firestore');
+                await saveInvoice(currentUser.uid, newInvoice);
+                console.log('💾 Invoice saved to Firestore');
+            } catch (error) {
+                console.warn('⚠️ Failed to save to Firestore (offline?), but continuing...', error);
+            }
         }
 
         // Call parent callback to show modal
