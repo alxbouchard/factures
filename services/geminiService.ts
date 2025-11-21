@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { CompanyInfo } from "../types";
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const API_KEY = "AIzaSyBlEhQXk6iITuvSWVmfEKSOCj2kgwZA3G4";
 
 if (!API_KEY) {
     console.warn("La variable d'environnement VITE_GEMINI_API_KEY n'est pas définie. Les fonctionnalités Gemini ne fonctionneront pas.");
@@ -12,7 +12,7 @@ const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export const generateDescription = async (title: string): Promise<string> => {
     if (!genAI) return title;
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
     const prompt = "Étant donné le titre de l'article \"" + title + "\", rédigez une description d'article professionnelle et concise pour une facture commerciale. Limitez-vous à une seule phrase. N'incluez pas le prix ou la quantité.";
 
     try {
@@ -29,7 +29,7 @@ export const generateEmailBody = async (invoiceDetails: string): Promise<string>
         const clientName = invoiceDetails.split('Nom du client: ')[1]?.split(',')[0] || 'Client';
         return "Bonjour " + clientName + ",\n\nVeuillez trouver votre facture en pièce jointe.\n\nMerci de faire affaire avec nous.";
     }
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
     const prompt = "Rédigez un corps de courriel professionnel et amical pour envoyer une facture à un client. Utilisez les détails suivants en français: " + invoiceDetails + ". Le courriel doit être bref et courtois. Adressez-vous au client par son nom. Mentionnez le montant total et la date d'échéance, et informez-le que la facture PDF est jointe à ce courriel.";
 
     try {
@@ -47,7 +47,7 @@ export const generateSmsBody = async (invoiceDetails: string): Promise<string> =
     if (!genAI) {
         return "Bonjour. Votre facture " + invoiceNum + " est prête. Merci.";
     }
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
     const prompt = "Rédigez un SMS professionnel et très concis (moins de 160 caractères) pour informer un client de sa facture. Utilisez ces détails en français: " + invoiceDetails + ". Mentionnez le montant total et la date d'échéance.";
 
     try {
@@ -63,7 +63,7 @@ export const analyzeInvoice = async (fileData: { mimeType: string; data: string 
     if (!genAI) throw new Error("L'IA n'est pas configurée.");
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-001",
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -100,7 +100,7 @@ export const analyzeClientInfo = async (fileData: { mimeType: string; data: stri
     if (!genAI) throw new Error("L'IA n'est pas configurée.");
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-001",
         generationConfig: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -172,7 +172,7 @@ export const startChatAndSendMessage = async (userMessage: string) => {
 
     if (!chatSession) {
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-1.5-flash-001",
             tools: [createInvoiceTool],
             systemInstruction: "Vous êtes un assistant de facturation.\nBUT: Créer une facture via 'create_invoice' dès que possible.\nRÈGLES:\n1. Si vous avez Client, Description, Prix -> APPELEZ create_invoice.\n2. Ne demandez pas confirmation.\n3. Taxes automatiques.\n4. Date: " + dateStr + "."
         });
