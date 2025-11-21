@@ -8,7 +8,6 @@ import ActionToolbar from './components/ActionToolbar';
 import InvoiceList from './components/InvoiceList';
 import ChatWidget from './components/ChatWidget';
 import VoiceFirstLanding from './components/VoiceFirstLanding';
-import ConversationalChat from './components/ConversationalChat';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
 import { ToastProvider } from './contexts/ToastContext';
@@ -67,8 +66,8 @@ const MainApp: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [themeColor, setThemeColor] = useState<ThemeColor>('light');
 
-  // NEW: Interface mode state
-  const [interfaceMode, setInterfaceMode] = useState<'landing' | 'conversation' | 'classic'>('landing');
+  // Interface mode: 'voice' (default, with big PARLER button) or 'classic' (manual form)
+  const [interfaceMode, setInterfaceMode] = useState<'voice' | 'classic'>('voice');
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -85,9 +84,9 @@ const MainApp: React.FC = () => {
     return invoices.find(inv => inv.id === selectedInvoiceId);
   }, [invoices, selectedInvoiceId]);
 
-  // Force landing mode on initial load
+  // Force voice mode on initial load
   useEffect(() => {
-    setInterfaceMode('landing');
+    setInterfaceMode('voice');
   }, []);
 
   // Load initial data from Firestore IN BACKGROUND (non-blocking)
@@ -255,11 +254,10 @@ const MainApp: React.FC = () => {
   // SKIP loading screen - go straight to interface
   // Load data in background while user sees the UI
 
-  // NEW: Voice-First Landing Screen
-  if (interfaceMode === 'landing') {
+  // Voice Mode: Big PARLER button, AI conversation, invoice creation
+  if (interfaceMode === 'voice') {
     return (
       <VoiceFirstLanding
-        onStartConversation={() => setInterfaceMode('conversation')}
         onManualEntry={() => setInterfaceMode('classic')}
         currentUser={currentUser}
         companyInfo={companyInfo}
@@ -267,18 +265,7 @@ const MainApp: React.FC = () => {
     );
   }
 
-  // NEW: Conversational Chat Interface
-  if (interfaceMode === 'conversation') {
-    return (
-      <ConversationalChat
-        onCreateInvoice={handleCreateInvoiceFromChat}
-        onExit={() => setInterfaceMode('classic')}
-        autoStartVoice={true}
-      />
-    );
-  }
-
-  // CLASSIC: Original Interface (with improvements)
+  // CLASSIC: Manual form interface
 
   return (
     <div className="bg-slate-900 min-h-screen text-slate-200 flex flex-col lg:flex-row antialiased">

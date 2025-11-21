@@ -4,14 +4,12 @@ import { Invoice, CompanyInfo } from '../types';
 import { useInvoiceChat } from '../hooks/useInvoiceChat';
 
 interface VoiceFirstLandingProps {
-    onStartConversation: () => void;
     onManualEntry: () => void;
     currentUser: any;
     companyInfo: CompanyInfo | null;
 }
 
 const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
-    onStartConversation,
     onManualEntry,
     currentUser,
     companyInfo
@@ -167,15 +165,9 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     )}
                 </div>
 
-                {/* Alternative option - hide when modal is open */}
+                {/* Manual entry option - hide when modal is open */}
                 {!showModal && (
-                    <div className="text-center flex flex-col gap-4">
-                        <button
-                            onClick={onStartConversation}
-                            className="text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium"
-                        >
-                            🤖 Passer en Mode Auto (Conversation)
-                        </button>
+                    <div className="text-center">
                         <button
                             onClick={onManualEntry}
                             className="text-slate-400 hover:text-white transition-colors text-sm"
