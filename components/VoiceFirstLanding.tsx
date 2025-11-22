@@ -19,42 +19,57 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
 
     const handleInvoiceCreated = useCallback(async (invoiceData: any) => {
         console.log('🎯 handleInvoiceCreated called with:', invoiceData);
-        const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
+        try {
+            const nextInvoiceNumber = String(Date.now()).slice(-3).padStart(3, '0');
 
-        const newInvoice: Invoice = {
-            id: `inv_${Date.now()}`,
-            invoiceNumber: nextInvoiceNumber,
-            invoiceDate: new Date().toISOString().split('T')[0],
-            dueDate: invoiceData.dueDate || '',
-            clientInfo: {
-                name: invoiceData.clientName || 'N/A',
-                address: invoiceData.clientAddress || 'N/A',
-                email: invoiceData.clientEmail || 'N/A',
-            },
-            lineItems: invoiceData.lineItems.map((item: any, index: number) => ({
-                id: Date.now() + index,
-                description: item.description || 'Article',
-                quantity: item.quantity || 1,
-                price: item.price || 0,
-            })),
-        };
-
-        console.log('📄 Created invoice object:', newInvoice);
-
-        // Save to Firestore (non-blocking - don't let errors prevent modal)
-        if (currentUser) {
-            try {
-                const { saveInvoice } = await import('../services/firestore');
-                await saveInvoice(currentUser.uid, newInvoice);
-                console.log('💾 Invoice saved to Firestore');
-            } catch (error) {
-                console.warn('⚠️ Failed to save to Firestore (offline?), but continuing...', error);
+            // Ensure lineItems is an array
+            const lineItems = Array.isArray(invoiceData.lineItems) ? invoiceData.lineItems : [];
+            if (lineItems.length === 0) {
+                console.warn('⚠️ No line items found in invoice data, adding default.');
+                lineItems.push({ description: 'Service', quantity: 1, price: 0 });
             }
-        }
 
-        // Call parent callback to show modal
-        console.log('📤 Calling onInvoiceCreated callback');
-        onInvoiceCreated(newInvoice);
+            const newInvoice: Invoice = {
+                id: `inv_${Date.now()}`,
+                invoiceNumber: nextInvoiceNumber,
+                invoiceDate: new Date().toISOString().split('T')[0],
+                dueDate: invoiceData.dueDate || '',
+                clientInfo: {
+                    name: invoiceData.clientName || 'N/A',
+                    address: invoiceData.clientAddress || 'N/A',
+                    email: invoiceData.clientEmail || 'N/A',
+                },
+                lineItems: lineItems.map((item: any, index: number) => ({
+                    id: Date.now() + index,
+                    description: item.description || 'Article',
+                    quantity: item.quantity || 1,
+                    price: item.price || 0,
+                })),
+            };
+
+            console.log('📄 Created invoice object:', newInvoice);
+
+            // 1. SHOW MODAL IMMEDIATELY (Optimistic UI)
+            console.log('📤 Calling onInvoiceCreated callback');
+            onInvoiceCreated(newInvoice);
+
+            // 2. SAVE TO FIRESTORE IN BACKGROUND
+            if (currentUser) {
+                // Do not await this - let it run in background
+                import('../services/firestore').then(async ({ saveInvoice }) => {
+                    try {
+                        await saveInvoice(currentUser.uid, newInvoice);
+                        console.log('💾 Invoice saved to Firestore');
+                    } catch (error) {
+                        console.warn('⚠️ Failed to save to Firestore (offline?), but continuing...', error);
+                    }
+                }).catch(err => console.error("Failed to import firestore service", err));
+            }
+
+        } catch (error) {
+            console.error("❌ Error creating invoice:", error);
+            alert("Une erreur est survenue lors de la création de la facture. Veuillez réessayer.");
+        }
     }, [currentUser, onInvoiceCreated]);
 
     const {

@@ -120,17 +120,28 @@ export const useInvoiceChat = ({ onCreateInvoice, onInvoiceCreated }: UseInvoice
                 const call = response.functionCalls[0];
                 if (call.name === 'create_invoice') {
                     const invoiceData = call.args;
-                    onCreateInvoice(invoiceData);
+                    console.log("🤖 AI called create_invoice with:", invoiceData);
 
-                    const successMsg = "✅ Parfait! J'ai créé votre facture.";
-                    setMessages(prev => [...prev, {
-                        id: Date.now().toString(),
-                        role: 'model',
-                        text: successMsg
-                    }]);
+                    try {
+                        onCreateInvoice(invoiceData);
 
-                    if (onInvoiceCreated) {
-                        onInvoiceCreated(invoiceData);
+                        const successMsg = "✅ Parfait! J'ai créé votre facture.";
+                        setMessages(prev => [...prev, {
+                            id: Date.now().toString(),
+                            role: 'model',
+                            text: successMsg
+                        }]);
+
+                        if (onInvoiceCreated) {
+                            onInvoiceCreated(invoiceData);
+                        }
+                    } catch (err) {
+                        console.error("❌ Error in onCreateInvoice callback:", err);
+                        setMessages(prev => [...prev, {
+                            id: Date.now().toString(),
+                            role: 'model',
+                            text: "⚠️ J'ai compris les détails, mais une erreur technique m'a empêché de créer la facture."
+                        }]);
                     }
                 }
             } else if (response.text) {
