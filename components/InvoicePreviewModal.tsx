@@ -25,8 +25,8 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
     const total = subtotal + tps + tvq;
 
     const modalContent = (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-            <div className="relative w-full max-w-3xl max-h-[90vh] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md" onClick={onClose}>
+            <div className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-700 overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
@@ -47,7 +47,7 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                 </div>
 
                 {/* Content - Scrollable */}
-                <div className="p-8 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="flex-grow overflow-y-auto p-6 sm:p-8 space-y-6">
 
                     {/* Company Info */}
                     {companyInfo && (
@@ -150,8 +150,7 @@ const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
     );
 
     // Temporarily disable Portal for debugging
-    return modalContent;
-    // return ReactDOM.createPortal(modalContent, document.body);
+    return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default InvoicePreviewModal;

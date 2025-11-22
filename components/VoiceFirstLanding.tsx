@@ -92,62 +92,38 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                     <button
                         onClick={handleMicClick}
                         className={`
-              relative w-48 h-48 rounded-full 
+              relative w-48 h-48 sm:w-64 sm:h-64 rounded-full 
               ${isRecording
-                                ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-2xl shadow-red-500/70 animate-pulse'
-                                : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-2xl shadow-indigo-500/50'
+                                ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-[0_0_60px_-15px_rgba(239,68,68,0.6)] animate-pulse'
+                                : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_60px_-15px_rgba(99,102,241,0.5)]'
                             }
-              transform transition-all duration-300
-              hover:scale-105
+              transform transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1)
+              hover:scale-105 hover:shadow-[0_0_80px_-10px_rgba(99,102,241,0.6)]
               active:scale-95
+              group
     `}
                     >
-                        <div className={`absolute inset-0 rounded-full blur-xl opacity-50 animate-pulse ${isRecording ? 'bg-red-400' : 'bg-indigo-400'} `}></div>
+                        {/* Inner Glow */}
+                        <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 transition-opacity duration-500 ${isRecording ? 'bg-red-400' : 'bg-white'} group-hover:opacity-60`}></div>
 
-                        <div className="relative flex flex-col items-center justify-center h-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-24 h-24 text-white mb-2">
+                        <div className="relative flex flex-col items-center justify-center h-full z-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-20 h-20 sm:w-28 sm:h-28 text-white mb-3 drop-shadow-lg transition-transform duration-500 group-hover:scale-110">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 7.5v-1.5a6 6 0 0 0-6-6v-1.5a6 6 0 0 0-6 6v1.5m6 7.5v-1.5" />
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-9 0V12Z" />
                             </svg>
-                            <p className="text-white text-lg font-bold">
-                                {isRecording ? 'ARRÊTER ⏹️' : 'PARLER 🎤'}
+                            <p className="text-white text-xl sm:text-2xl font-bold tracking-wide drop-shadow-md">
+                                {isRecording ? 'ARRÊTER' : 'PARLER'}
                             </p>
                             {isRecording && (
-                                <p className="text-white/80 text-xs mt-1">Cliquez pour envoyer</p>
+                                <p className="text-white/90 text-sm mt-2 font-medium animate-bounce">Cliquez pour envoyer</p>
                             )}
                         </div>
 
-                        <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping"></div>
+                        {/* Ring Animation */}
+                        <div className={`absolute inset-0 rounded-full border-2 border-white/20 ${isRecording ? 'animate-ping' : 'scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-20 transition-all duration-700'}`}></div>
                     </button>
 
-                    {/* TEST BUTTON */}
-                    <button
-                        onClick={() => {
-                            console.log('🧪 TEST BUTTON CLICKED');
-                            const testInvoice: Invoice = {
-                                id: 'test-123',
-                                invoiceNumber: '999',
-                                invoiceDate: new Date().toISOString().split('T')[0],
-                                dueDate: '',
-                                clientInfo: {
-                                    name: 'Test Client',
-                                    address: '123 Test St',
-                                    email: 'test@test.com'
-                                },
-                                lineItems: [{
-                                    id: 1,
-                                    description: 'Test Service',
-                                    quantity: 1,
-                                    price: 100
-                                }]
-                            };
-                            console.log('🧪 Calling onInvoiceCreated:', testInvoice);
-                            onInvoiceCreated(testInvoice);
-                        }}
-                        className="mt-4 px-8 py-4 bg-yellow-500 text-black font-bold rounded-xl hover:bg-yellow-400 transition-colors"
-                    >
-                        🧪 TEST MODAL
-                    </button>
+
                 </div>
 
                 {/* Live transcript */}

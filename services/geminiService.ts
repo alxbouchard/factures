@@ -11,7 +11,10 @@ if (!API_KEY) {
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export const generateDescription = async (title: string): Promise<string> => {
-    if (!genAI) return title;
+    if (!genAI) {
+        console.warn("Gemini API not initialized");
+        return title;
+    }
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
     const prompt = "Étant donné le titre de l'article \"" + title + "\", rédigez une description d'article professionnelle et concise pour une facture commerciale. Limitez-vous à une seule phrase. N'incluez pas le prix ou la quantité.";
 
@@ -165,7 +168,10 @@ const createInvoiceTool = {
 };
 
 export const startChatAndSendMessage = async (userMessage: string) => {
-    if (!genAI) throw new Error("L'API Gemini n'est pas configurée.");
+    if (!genAI) {
+        console.error("Gemini API not initialized");
+        return { text: "Désolé, l'IA n'est pas configurée (Clé API manquante)." };
+    }
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-CA');
