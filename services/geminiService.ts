@@ -138,7 +138,7 @@ export const analyzeClientInfo = async (fileData: { mimeType: string; data: stri
 // Chat with Tools
 let chatSession: any = null;
 
-const createInvoiceTool = {
+const createInvoiceTool: any = {
     functionDeclarations: [{
         name: 'create_invoice',
         description: 'Crée une nouvelle facture.',
@@ -180,7 +180,16 @@ export const startChatAndSendMessage = async (userMessage: string) => {
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash-exp",
             tools: [createInvoiceTool],
-            systemInstruction: "Vous êtes un assistant de facturation.\nBUT: Créer une facture via 'create_invoice' dès que possible.\nRÈGLES:\n1. Si vous avez Client, Description, Prix -> APPELEZ create_invoice.\n2. Ne demandez pas confirmation.\n3. Taxes automatiques.\n4. Date: " + dateStr + "."
+            systemInstruction: `Vous êtes un assistant de facturation intelligent, rapide et tolérant aux erreurs.
+BUT: Créer une facture via l'outil 'create_invoice' le plus vite possible.
+CONTEXTE: L'utilisateur dicte souvent rapidement, avec des bégaiements ou des répétitions.
+RÈGLES:
+1. EXTRACTION AGRESSIVE: Si l'utilisateur dit "compagnon merco service technique", comprenez Client="Merco", Desc="Service technique". Ignorez les mots parasites ("au", "euh").
+2. TOLÉRANCE AUX TYPOS: Si vous entendez "omrco OMR o M e RCO", comprenez "Omerco".
+3. Si vous avez Client, Description et Prix (ou Quantité/Prix) -> APPELEZ 'create_invoice' IMMÉDIATEMENT. Ne demandez PAS confirmation avant d'appeler l'outil.
+4. Si des infos manquent, demandez UNIQUEMENT ce qui manque, en confirmant ce que vous avez compris (ex: "J'ai noté 500$ pour le service technique. Quel est le nom du client ?").
+5. Date par défaut: ${dateStr}.
+6. Soyez bref et efficace.`
         });
         chatSession = model.startChat();
     }

@@ -233,11 +233,15 @@ const MainApp: React.FC = () => {
   // SKIP loading screen - go straight to interface
   // Load data in background while user sees the UI
 
+  // Ref for VoiceFirstLanding to trigger modification
+  const voiceLandingRef = useRef<import('./components/VoiceFirstLanding').VoiceFirstLandingRef>(null);
+
   // Voice Mode: Big PARLER button, AI conversation, invoice creation
   if (interfaceMode === 'voice') {
     return (
       <>
         <VoiceFirstLanding
+          ref={voiceLandingRef}
           onManualEntry={() => setInterfaceMode('classic')}
           currentUser={currentUser}
           companyInfo={companyInfo}
@@ -254,15 +258,17 @@ const MainApp: React.FC = () => {
             invoice={createdInvoice}
             companyInfo={companyInfo}
             onClose={() => setShowInvoiceModal(false)}
-            onSendEmail={async () => {
-              if (createdInvoice.clientInfo.email && createdInvoice.clientInfo.email !== 'N/A') {
-                const { sendEmailViaMailto, generateInvoiceEmail } = await import('./services/emailService');
-                const emailData = await generateInvoiceEmail(createdInvoice, companyInfo);
-                await sendEmailViaMailto(emailData);
-                setShowInvoiceModal(false);
-              } else {
-                alert("Pas d'email client disponible");
+            onModify={() => {
+              setShowInvoiceModal(false);
+              // Trigger modification flow in VoiceFirstLanding
+              if (voiceLandingRef.current) {
+                voiceLandingRef.current.triggerModification(createdInvoice);
               }
+            }}
+            onSendEmail={async () => {
+              const { shareInvoice } = await import('./services/emailService');
+              await shareInvoice(createdInvoice, companyInfo);
+              setShowInvoiceModal(false);
             }}
           />
         )}

@@ -54,3 +54,13 @@ export const deleteInvoice = async (userId: string, invoiceId: string) => {
     const invoiceRef = doc(db, 'users', userId, 'invoices', invoiceId);
     await deleteDoc(invoiceRef);
 };
+
+export const saveInvoicePDF = async (userId: string, invoiceId: string, pdfBase64: string) => {
+    // Store PDF in a separate collection to avoid bloating the invoice document
+    // users/{userId}/invoices/{invoiceId}/archive/pdf
+    const pdfRef = doc(db, 'users', userId, 'invoices', invoiceId, 'archive', 'pdf');
+    await setDoc(pdfRef, {
+        base64: pdfBase64,
+        savedAt: new Date().toISOString()
+    });
+};

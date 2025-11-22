@@ -1,6 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Invoice, CompanyInfo } from '../types';
 import { useInvoiceChat } from '../hooks/useInvoiceChat';
+
+export interface VoiceFirstLandingRef {
+    triggerModification: (invoice: Invoice) => void;
+}
 
 interface VoiceFirstLandingProps {
     onManualEntry: () => void;
@@ -9,12 +13,12 @@ interface VoiceFirstLandingProps {
     companyInfo: CompanyInfo | null;
 }
 
-const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
+const VoiceFirstLanding = forwardRef<VoiceFirstLandingRef, VoiceFirstLandingProps>(({
     onManualEntry,
     onInvoiceCreated,
     currentUser,
     companyInfo
-}) => {
+}, ref) => {
     // Remove local modal state - now managed by App.tsx
 
     const handleInvoiceCreated = useCallback(async (invoiceData: any) => {
@@ -74,6 +78,7 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
 
     const {
         messages,
+        setMessages,
         inputValue,
         isLoading: isThinking,
         isRecording,
@@ -83,6 +88,66 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
         onCreateInvoice: () => { }, // We handle it in onInvoiceCreated
         onInvoiceCreated: handleInvoiceCreated
     });
+
+    useImperativeHandle(ref, () => ({
+        triggerModification: (invoice: Invoice) => {
+            console.log("🔄 Triggering modification for invoice:", invoice.id);
+
+            // 1. Add system message showing the current invoice context
+            const contextMsg = {
+                id: Date.now().toString(),
+                role: 'model' as const,
+                text: `Je suis prêt à modifier la facture #${invoice.invoiceNumber} pour ${invoice.clientInfo.name}. Dites-moi ce que vous voulez changer (ex: "Change le prix à 500$").`
+            };
+            setMessages(prev => [...prev, contextMsg]);
+
+            // 2. Inject the invoice context into the chat history (hidden or system prompt)
+            // Ideally, we should send this to the LLM so it knows the context.
+            // For now, we'll rely on the user's next message + the fact that we can re-send the context if needed.
+            // A better approach is to send a hidden message to the LLM with the JSON.
+
+            // We can simulate a user message that sets the context, but hide it? 
+            // Or just append it to the history that is sent to the API.
+            // Since our `useInvoiceChat` manages state, we can just add a message.
+
+            // Let's add a hidden system message with the JSON context
+            const jsonContext = JSON.stringify(invoice);
+            // We don't have a "system" role in our UI types usually, but we can add a user message that says:
+            // "Voici la facture actuelle : [JSON]. Je veux la modifier."
+            // And we can visually hide it or show it as "Contexte chargé".
+
+            // For simplicity/transparency, let's just let the user know we have the context.
+            // The actual "memory" depends on how `startChatAndSendMessage` works. 
+            // It uses `chatSession` which keeps history. 
+            // So we need to send this context to the session.
+
+            // We can call `handleSendMessage` programmatically with the context?
+            // But we don't want to show that big JSON to the user.
+
+            // Hack: We will just rely on the user saying "Change le prix". 
+            // BUT the AI doesn't know the current price unless we tell it.
+            // So we MUST send the JSON.
+
+            // Let's send a hidden message to the backend.
+            // We need to expose a way to send message without adding to UI, OR add to UI and hide it.
+            // For now, let's just add it to UI but maybe formatted nicely? 
+            // Or just trust the user will provide details? No, user said "The AI must have access to DB and keep context".
+
+            // We will send a message to the AI with the invoice details.
+            // We can use `startChatAndSendMessage` directly if we import it, but we want to keep state in sync.
+            // Let's use `handleSendMessage` but we need to bypass the UI update if possible?
+            // No, `handleSendMessage` takes input from state.
+
+            // Let's just append to messages and assume the user is okay seeing "Context loaded".
+            // Actually, we can just send it to the AI and NOT add it to the `messages` state if we modify `useInvoiceChat`.
+            // But `useInvoiceChat` is simple.
+
+            // Let's just add a message "Je charge le contexte de la facture..." and then send the JSON in the background.
+            import('../services/geminiService').then(async ({ startChatAndSendMessage }) => {
+                await startChatAndSendMessage(`Voici le contexte de la facture actuelle (JSON): ${JSON.stringify(invoice)}. L'utilisateur va demander des modifications. Attends ses instructions.`);
+            });
+        }
+    }));
 
     // Use the last user message as the "transcript" for display if needed, 
     // but better to show the conversation history or just the input value.
@@ -122,12 +187,13 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
                         <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 transition-opacity duration-500 ${isRecording ? 'bg-red-400' : 'bg-white'} group-hover:opacity-60`}></div>
 
                         <div className="relative flex flex-col items-center justify-center h-full z-10">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-20 h-20 sm:w-28 sm:h-28 text-white mb-3 drop-shadow-lg transition-transform duration-500 group-hover:scale-110">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 7.5v-1.5a6 6 0 0 0-6-6v-1.5a6 6 0 0 0-6 6v1.5m6 7.5v-1.5" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-9 0V12Z" />
-                            </svg>
-                            <p className="text-white text-xl sm:text-2xl font-bold tracking-wide drop-shadow-md">
-                                {isRecording ? 'ARRÊTER' : 'PARLER'}
+                            <img
+                                src="/ai_assistant_icon_transparent.png"
+                                alt="AI Assistant"
+                                className="w-24 h-24 sm:w-32 sm:h-32 mb-2 object-contain transition-transform duration-500 group-hover:scale-110"
+                            />
+                            <p className="text-white text-lg sm:text-xl font-bold tracking-wide drop-shadow-md text-center leading-tight">
+                                {isRecording ? 'ARRÊTER' : 'Cliquez pour\nParler'}
                             </p>
                             {isRecording && (
                                 <p className="text-white/90 text-sm mt-2 font-medium animate-bounce">Cliquez pour envoyer</p>
@@ -194,6 +260,8 @@ const VoiceFirstLanding: React.FC<VoiceFirstLandingProps> = ({
             </div>
         </div>
     );
-};
+});
+
+VoiceFirstLanding.displayName = 'VoiceFirstLanding';
 
 export default VoiceFirstLanding;
