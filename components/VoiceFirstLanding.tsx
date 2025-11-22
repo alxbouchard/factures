@@ -1,4 +1,4 @@
-import React, { useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react';
 import { Invoice, CompanyInfo } from '../types';
 import { useInvoiceChat } from '../hooks/useInvoiceChat';
 
@@ -149,6 +149,13 @@ const VoiceFirstLanding = forwardRef<VoiceFirstLandingRef, VoiceFirstLandingProp
         }
     }));
 
+    // Auto-scroll to bottom when messages change
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isThinking]);
+
     // Use the last user message as the "transcript" for display if needed, 
     // but better to show the conversation history or just the input value.
     // The original design showed "transcript" in a box.
@@ -207,6 +214,9 @@ const VoiceFirstLanding = forwardRef<VoiceFirstLandingRef, VoiceFirstLandingProp
                             </div>
                         </div>
                     )}
+
+                    {/* Scroll anchor - invisible div at the end */}
+                    <div ref={chatEndRef} />
                 </div>
 
                 {/* Giant Voice Button - Fixed at bottom */}
