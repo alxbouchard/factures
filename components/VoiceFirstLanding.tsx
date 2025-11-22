@@ -156,10 +156,10 @@ const VoiceFirstLanding = forwardRef<VoiceFirstLandingRef, VoiceFirstLandingProp
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center p-8">
-            <div className="max-w-2xl w-full">
+            <div className="max-w-2xl w-full h-full flex flex-col">
                 {/* Logo/Title */}
-                <div className="mb-8 text-center">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                <div className="mb-8 text-center flex-shrink-0">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text transparent mb-2">
                         ✨ Facture Magique
                     </h1>
                     <p className="text-lg text-slate-300">
@@ -167,95 +167,98 @@ const VoiceFirstLanding = forwardRef<VoiceFirstLandingRef, VoiceFirstLandingProp
                     </p>
                 </div>
 
-                {/* Giant Voice Button */}
-                <div className="mb-8 flex justify-center">
-                    <button
-                        onClick={handleMicClick}
-                        className={`
-              relative w-48 h-48 sm:w-64 sm:h-64 rounded-full 
+                <div className="w-full max-w-2xl mx-auto px-4 h-full flex flex-col">
+                    {/* Chat Messages Area - Scrollable at top */}
+                    <div className="flex-1 overflow-y-auto mb-4 space-y-4">
+                        {/* Live transcript */}
+                        {inputValue && (
+                            <div className="p-4 bg-indigo-500/20 rounded-xl border border-indigo-500/30 text-center">
+                                <p className="text-indigo-200 italic">"{inputValue}"</p>
+                            </div>
+                        )}
+
+                        {/* Conversation */}
+                        {messages.length === 0 ? (
+                            <div className="text-center text-slate-400 py-8">
+                                <p className="text-xl mb-2">👋 Bonjour!</p>
+                                <p>Appuyez sur le bouton et dites-moi:</p>
+                                <p className="text-sm mt-2">"Facture pour Jean Dupont, plomberie, 500$"</p>
+                            </div>
+                        ) : (
+                            messages.map((msg, idx) => (
+                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
+                                    <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
+                                        ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
+                                        : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-none'
+                                        } `}>
+                                        <p className="text-lg">{msg.text}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+
+                        {isThinking && (
+                            <div className="flex justify-start">
+                                <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl rounded-bl-none">
+                                    <div className="flex gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></div>
+                                        <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce [animation-delay:-0.15s]"></div>
+                                        <div className="h-2 w-2 rounded-full bg-pink-400 animate-bounce"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Giant Voice Button - Fixed at bottom */}
+                    <div className="flex-shrink-0 pb-4">
+                        <div className="flex justify-center mb-6">
+                            <button
+                                onClick={handleMicClick}
+                                className={`
+              relative w-48 h-48 sm:w-56 sm:h-56 rounded-full 
               ${isRecording
-                                ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-[0_0_60px_-15px_rgba(239,68,68,0.6)] animate-pulse'
-                                : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_60px_-15px_rgba(99,102,241,0.5)]'
-                            }
+                                        ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-[0_0_60px_-15px_rgba(239,68,68,0.6)] animate-pulse'
+                                        : 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_60px_-15px_rgba(99,102,241,0.5)]'
+                                    }
               transform transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1)
               hover:scale-105 hover:shadow-[0_0_80px_-10px_rgba(99,102,241,0.6)]
               active:scale-95
               group
     `}
-                    >
-                        {/* Inner Glow */}
-                        <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 transition-opacity duration-500 ${isRecording ? 'bg-red-400' : 'bg-white'} group-hover:opacity-60`}></div>
+                            >
+                                {/* Inner Glow */}
+                                <div className={`absolute inset-0 rounded-full blur-2xl opacity-40 transition-opacity duration-500 ${isRecording ? 'bg-red-400' : 'bg-white'} group-hover:opacity-60`}></div>
 
-                        <div className="relative flex flex-col items-center justify-center h-full z-10">
-                            <img
-                                src="/ai_assistant_icon_transparent.png"
-                                alt="AI Assistant"
-                                className="w-24 h-24 sm:w-32 sm:h-32 mb-2 object-contain transition-transform duration-500 group-hover:scale-110"
-                            />
-                            <p className="text-white text-lg sm:text-xl font-bold tracking-wide drop-shadow-md text-center leading-tight">
-                                {isRecording ? 'ARRÊTER' : 'Cliquez pour\nParler'}
-                            </p>
-                            {isRecording && (
-                                <p className="text-white/90 text-sm mt-2 font-medium animate-bounce">Cliquez pour envoyer</p>
-                            )}
+                                <div className="relative flex flex-col items-center justify-center h-full z-10">
+                                    <img
+                                        src="/ai_assistant_icon_transparent.png"
+                                        alt="AI Assistant"
+                                        className="w-20 h-20 sm:w-28 sm:h-28 mb-2 object-contain transition-transform duration-500 group-hover:scale-110"
+                                    />
+                                    <p className="text-white text-lg sm:text-xl font-bold tracking-wide drop-shadow-md text-center leading-tight">
+                                        {isRecording ? 'ARRÊTER' : 'Cliquez pour\nParler'}
+                                    </p>
+                                    {isRecording && (
+                                        <p className="text-white/90 text-sm mt-2 font-medium animate-bounce">Cliquez pour envoyer</p>
+                                    )}
+                                </div>
+
+                                {/* Ring Animation */}
+                                <div className={`absolute inset-0 rounded-full border-2 border-white/20 ${isRecording ? 'animate-ping' : 'scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-20 transition-all duration-700'}`}></div>
+                            </button>
                         </div>
 
-                        {/* Ring Animation */}
-                        <div className={`absolute inset-0 rounded-full border-2 border-white/20 ${isRecording ? 'animate-ping' : 'scale-110 opacity-0 group-hover:scale-125 group-hover:opacity-20 transition-all duration-700'}`}></div>
-                    </button>
-
-
-                </div>
-
-                {/* Live transcript */}
-                {inputValue && (
-                    <div className="mb-4 p-4 bg-indigo-500/20 rounded-xl border border-indigo-500/30 text-center">
-                        <p className="text-indigo-200 italic">"{inputValue}"</p>
+                        {/* Manual entry option */}
+                        <div className="text-center">
+                            <button
+                                onClick={onManualEntry}
+                                className="text-slate-400 hover:text-white transition-colors text-sm"
+                            >
+                                ✏️ Ou saisir manuellement
+                            </button>
+                        </div>
                     </div>
-                )}
-
-                {/* Conversation */}
-                <div className="space-y-4 mb-8">
-                    {messages.length === 0 ? (
-                        <div className="text-center text-slate-400 py-8">
-                            <p className="text-xl mb-2">👋 Bonjour!</p>
-                            <p>Appuyez sur le bouton et dites-moi:</p>
-                            <p className="text-sm mt-2">"Facture pour Jean Dupont, plomberie, 500$"</p>
-                        </div>
-                    ) : (
-                        messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} `}>
-                                <div className={`max-w-[80%] p-4 rounded-2xl ${msg.role === 'user'
-                                    ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-none'
-                                    : 'bg-slate-800 text-slate-100 border border-slate-700 rounded-bl-none'
-                                    } `}>
-                                    <p className="text-lg">{msg.text}</p>
-                                </div>
-                            </div>
-                        ))
-                    )}
-
-                    {isThinking && (
-                        <div className="flex justify-start">
-                            <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl rounded-bl-none">
-                                <div className="flex gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]"></div>
-                                    <div className="h-2 w-2 rounded-full bg-purple-400 animate-bounce [animation-delay:-0.15s]"></div>
-                                    <div className="h-2 w-2 rounded-full bg-pink-400 animate-bounce"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Manual entry option - always visible now */}
-                <div className="text-center">
-                    <button
-                        onClick={onManualEntry}
-                        className="text-slate-400 hover:text-white transition-colors text-sm"
-                    >
-                        ✏️ Ou saisir manuellement
-                    </button>
                 </div>
             </div>
         </div>
