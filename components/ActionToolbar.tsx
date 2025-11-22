@@ -15,7 +15,7 @@ interface ActionToolbarProps {
 }
 
 const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo, dueDate, total }) => {
-  const [isProcessing, setIsProcessing] = useState< 'pdf' | 'email' | 'sms' | null>(null);
+  const [isProcessing, setIsProcessing] = useState<'pdf' | 'email' | 'sms' | null>(null);
 
   const generateAndDownloadPdf = async () => {
     const input = document.getElementById('invoice-preview');
@@ -32,7 +32,7 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
         unit: 'pt',
         format: 'a4',
       });
-      
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const canvasWidth = canvas.width;
@@ -43,7 +43,7 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
 
       let finalHeight = height;
       let finalWidth = width;
-      if(height > pdfHeight) {
+      if (height > pdfHeight) {
         finalHeight = pdfHeight;
         finalWidth = finalHeight * ratio;
       }
@@ -54,17 +54,17 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       pdf.save(`facture-${invoiceNumber}.pdf`);
     } catch (err) {
-        console.error("Error generating PDF", err);
-        throw err; // Re-throw to be caught by callers
+      console.error("Error generating PDF", err);
+      throw err; // Re-throw to be caught by callers
     }
   };
-  
+
   const handleDownloadPdf = async () => {
     setIsProcessing('pdf');
     try {
       await generateAndDownloadPdf();
     } catch (error) {
-       alert("Une erreur est survenue lors de la génération du PDF.");
+      alert("Une erreur est survenue lors de la génération du PDF.");
     } finally {
       setIsProcessing(null);
     }
@@ -76,12 +76,12 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
     try {
       // Step 1: Generate and download PDF for the user to attach
       await generateAndDownloadPdf();
-      
+
       // Step 2: Generate AI email body
       const promptDetails = `Nom du client: ${clientInfo.name}, Numéro de facture: ${invoiceNumber}, Total: ${total.toFixed(2)}$ CAD, Date d'échéance: ${dueDate || 'S.O.'}`;
       const emailBody = await generateEmailBody(promptDetails);
       const subject = `Facture ${invoiceNumber} de votre entreprise`;
-      
+
       // Step 3: Add instructions to the body and open the mail client
       const finalBody = `${emailBody}\n\n---\n(N'oubliez pas de joindre manuellement le fichier PDF "facture-${invoiceNumber}.pdf" qui vient d'être téléchargé.)`;
       const mailtoLink = `mailto:${clientInfo.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(finalBody)}`;
@@ -93,7 +93,7 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
       setIsProcessing(null);
     }
   };
-  
+
   const handleSendSMS = async () => {
     setIsProcessing('sms');
     try {
@@ -103,7 +103,7 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
       window.open(smsLink, '_blank');
     } catch (error) {
       console.error('Échec de la génération du corps du SMS:', error);
-       alert('Impossible de générer le contenu du SMS. Veuillez réessayer.');
+      alert('Impossible de générer le contenu du SMS. Veuillez réessayer.');
     } finally {
       setIsProcessing(null);
     }
@@ -113,14 +113,14 @@ const ActionToolbar: React.FC<ActionToolbarProps> = ({ invoiceNumber, clientInfo
     <button
       onClick={onClick}
       disabled={processing}
-      className="flex flex-col items-center justify-center gap-2 w-28 h-28 bg-slate-800/80 backdrop-blur-sm rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-wait"
+      className="flex flex-col items-center justify-center gap-1 w-20 h-20 bg-slate-800/80 backdrop-blur-sm rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-wait"
     >
       <div className="relative">
-        {icon}
-        {aigen && !processing && <MagicIcon className="absolute -top-1 -right-1 w-4 h-4 text-indigo-400"/>}
+        {React.cloneElement(icon as React.ReactElement, { className: "w-6 h-6" })}
+        {aigen && !processing && <MagicIcon className="absolute -top-1 -right-1 w-3 h-3 text-indigo-400" />}
       </div>
-      <span className="text-sm font-medium">{label}</span>
-      {processing && <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center rounded-lg"><svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <span className="text-xs font-medium">{label}</span>
+      {processing && <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center rounded-lg"><svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg></div>}

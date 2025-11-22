@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ClientInfo, LineItem } from '../types';
 import LineItemRow from './LineItemRow';
-import { UserIcon, CalendarIcon, HashtagIcon } from './icons';
+import { UserIcon, CalendarIcon, HashtagIcon, ChevronDownIcon } from './icons';
 import { useToast } from '../contexts/ToastContext';
 
 interface InvoiceFormProps {
@@ -33,10 +33,32 @@ const InputField: React.FC<{ label: string; value: string; onChange: (e: React.C
   </div>
 );
 
+const AccordionItem: React.FC<{ title: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode }> = ({ title, isOpen, onToggle, children }) => (
+  <div className="border border-slate-700 rounded-lg bg-slate-900/50 overflow-hidden mb-4">
+    <button
+      onClick={onToggle}
+      className="w-full px-4 py-3 flex justify-between items-center bg-slate-800/50 hover:bg-slate-800 transition-colors text-left"
+    >
+      <span className="font-semibold text-white">{title}</span>
+      <ChevronDownIcon className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''}`} />
+    </button>
+    <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div className="p-4 border-t border-slate-700/50">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
 const InvoiceForm: React.FC<InvoiceFormProps> = ({
   clientInfo, setClientInfo, invoiceNumber, setInvoiceNumber, invoiceDate, setInvoiceDate, dueDate, setDueDate, lineItems, setLineItems
 }) => {
   const { showToast } = useToast();
+  const [openSection, setOpenSection] = useState<string | null>('client');
+
+  const toggleSection = (section: string) => {
+    setOpenSection(openSection === section ? null : section);
+  };
 
   const handleClientInfoChange = (field: keyof ClientInfo, value: string) => {
     setClientInfo(prev => ({ ...prev, [field]: value }));
@@ -59,11 +81,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-2">
       {/* Client Information */}
-      <section>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-white">Facturer à</h2>
+      <AccordionItem title="Facturer à" isOpen={openSection === 'client'} onToggle={() => toggleSection('client')}>
+        <div className="flex justify-end mb-4">
           <div className="relative">
             <input
               type="file"
@@ -75,10 +96,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   const file = e.target.files[0];
                   showToast("Analyse du document en cours...", "info");
                   try {
-                    // Show loading toast? We need access to toast here.
-                    // Since InvoiceForm is a child, we can use useToast if we import it.
-                    // But let's keep it simple for now or pass a prop?
-                    // Better to use useToast hook directly here.
                     const { toBase64 } = await import('../utils/helpers');
                     const { analyzeClientInfo } = await import('../services/geminiService');
 
@@ -122,21 +139,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             <InputField label="Adresse du client" value={clientInfo.address} onChange={e => handleClientInfoChange('address', e.target.value)} icon={<UserIcon className="w-5 h-5" />} placeholder="ex: 123 rue de l'Innovation" />
           </div>
         </div>
-      </section>
+      </AccordionItem>
 
       {/* Invoice Details */}
-      <section>
-        <h2 className="text-lg font-semibold text-white mb-4">Détails de la facture</h2>
+      <AccordionItem title="Détails de la facture" isOpen={openSection === 'details'} onToggle={() => toggleSection('details')}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <InputField label="Numéro de facture" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} icon={<HashtagIcon className="w-5 h-5" />} />
           <InputField label="Date de la facture" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} icon={<CalendarIcon className="w-5 h-5" />} type="date" />
           <InputField label="Date d'échéance" value={dueDate} onChange={e => setDueDate(e.target.value)} icon={<CalendarIcon className="w-5 h-5" />} type="date" />
         </div>
-      </section>
+      </AccordionItem>
 
       {/* Line Items */}
-      <section>
-        <h2 className="text-lg font-semibold text-white mb-4">Articles</h2>
+      <AccordionItem title="Articles" isOpen={openSection === 'items'} onToggle={() => toggleSection('items')}>
         <div className="space-y-3">
           {lineItems.map(item => (
             <LineItemRow
@@ -155,7 +170,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Ajouter un article
         </button>
-      </section>
+      </AccordionItem>
     </div>
   );
 };

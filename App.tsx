@@ -49,6 +49,7 @@ const MainApp: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'sauvegardé' | 'enregistrement' | 'non sauvegardé'>('sauvegardé');
   const invoicesRef = useRef<Invoice[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     invoicesRef.current = invoices;
@@ -285,15 +286,33 @@ const MainApp: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         onSave={handleCompanyInfoSave}
         initialInfo={companyInfo}
+        onLogout={logout}
+        onThemeChange={setThemeColor}
+        currentTheme={themeColor}
       />
 
-      <InvoiceList
-        invoices={invoices}
-        selectedInvoiceId={selectedInvoiceId}
-        onSelectInvoice={setSelectedInvoiceId}
-        onNewInvoice={handleNewInvoice}
-        onDeleteInvoice={handleDeleteInvoice}
-      />
+      <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full lg:w-80' : 'w-0 lg:w-0'} overflow-hidden flex-shrink-0 bg-slate-900 border-r border-slate-800 relative`}>
+        <div className="w-full lg:w-80 h-full">
+          <InvoiceList
+            invoices={invoices}
+            selectedInvoiceId={selectedInvoiceId}
+            onSelectInvoice={setSelectedInvoiceId}
+            onNewInvoice={handleNewInvoice}
+            onDeleteInvoice={handleDeleteInvoice}
+          />
+        </div>
+      </div>
+
+      {/* Sidebar Toggle Button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className={`absolute top-4 left-4 z-20 p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all duration-300 ${isSidebarOpen ? 'lg:left-80 ml-2' : 'left-4'}`}
+        title={isSidebarOpen ? "Masquer la liste" : "Afficher la liste"}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : ''}`}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+      </button>
 
       {currentInvoice ? (
         <>
@@ -341,44 +360,15 @@ const MainApp: React.FC = () => {
                     <SaveStatusIndicator status={saveStatus} />
                   </div>
                   <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-full">
-                    <button onClick={() => setInterfaceMode('landing')} className="p-1.5 rounded-full text-slate-400 hover:bg-indigo-500 hover:text-white transition-colors" aria-label="Mode Vocal" title="Retour au mode vocal">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 7.5v-1.5a6 6 0 0 0-6-6v-1.5a6 6 0 0 0-6 6v1.5m6 7.5v-1.5" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-9 0V12Z" />
-                      </svg>
-                    </button>
                     <button
-                      id="btn-mode-auto"
-                      onClick={() => setInterfaceMode('landing')}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium hover:shadow-lg hover:scale-105 transition-all"
+                      onClick={() => setIsSettingsOpen(true)}
+                      className="p-2 rounded-full text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                      aria-label="Paramètres de l'entreprise"
                     >
-                      <span>🎤 Assistant Vocal</span>
-                    </button>
-                    <div className="w-px h-4 bg-slate-700 mx-1"></div>
-                    <button onClick={() => setThemeColor('light')} className={`p-1.5 rounded-full transition-colors ${themeColor === 'light' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-700'}`} aria-label="Thème clair">
-                      <SunIcon className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => setThemeColor('dark')} className={`p-1.5 rounded-full transition-colors ${themeColor === 'dark' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-700'}`} aria-label="Thème sombre">
-                      <MoonIcon className="w-5 h-5" />
+                      <SettingsIcon className="w-6 h-6" />
                     </button>
                   </div>
-                  <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 rounded-full text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-                    aria-label="Paramètres de l'entreprise"
-                  >
-                    <SettingsIcon className="w-6 h-6" />
-                  </button>
-                  <button
-                    onClick={logout}
-                    className="p-2 rounded-full text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors"
-                    aria-label="Déconnexion"
-                    title="Se déconnecter"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                    </svg>
-                  </button>
+
                 </div>
               </header>
 
@@ -403,27 +393,28 @@ const MainApp: React.FC = () => {
               </div>
             </div>
           </main>
-
-          {/* Floating Voice Mode Button */}
-          <button
-            onClick={() => setInterfaceMode('landing')}
-            className="fixed bottom-6 left-6 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-full shadow-lg shadow-indigo-500/40 hover:scale-110 transition-transform duration-200 group"
-            title="Ouvrir l'Assistant Vocal"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 7.5v-1.5a6 6 0 0 0-6-6v-1.5a6 6 0 0 0-6 6v1.5m6 7.5v-1.5" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v2.25a4.5 4.5 0 0 1-9 0V12Z" />
-            </svg>
-            <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white px-3 py-1 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              Mode Vocal
-            </span>
-          </button>
         </>
       ) : (
         <div className="flex-grow flex items-center justify-center">
           <p className="text-slate-500">Aucune facture sélectionnée</p>
         </div>
       )}
+
+      {/* Floating Voice Mode Button - Always visible in manual mode */}
+      <button
+        onClick={() => setInterfaceMode('voice')}
+        className="fixed bottom-6 left-6 z-[100] bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-full shadow-lg shadow-indigo-500/40 hover:scale-110 transition-transform duration-200 group"
+        title="Ouvrir l'Assistant Vocal"
+      >
+        <img
+          src="/ai_assistant_icon_transparent.png"
+          alt="AI Assistant"
+          className="w-8 h-8"
+        />
+        <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white px-3 py-1 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Mode Vocal
+        </span>
+      </button>
     </div>
   );
 };
